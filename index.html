@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planificador — Centro Vida Nueva</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.19.0/webfont/tabler-icons.min.css">
+
 <style>
 :root {
   --bg: #F7F6F3;
@@ -213,27 +213,55 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="document.getElementById('modal-tarea').style.display='none'">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarTarea()"><i class="ti ti-check"></i> Guardar</button>
+      <button class="btn btn-primary" onclick="guardarTarea()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PLANTILLA POR TAREA -->
+<div id="modal-plantilla-tarea" style="display:none" class="modal-bg" onclick="if(event.target===this)document.getElementById('modal-plantilla-tarea').style.display='none'">
+  <div class="modal" style="width:540px">
+    <div class="modal-header">
+      <div class="modal-title" id="mpt-titulo">Editar plantilla</div>
+      <div class="modal-tabs" id="mpt-tabs"></div>
+    </div>
+    <div class="modal-body" id="mpt-body"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="document.getElementById('modal-plantilla-tarea').style.display='none'">Cerrar</button>
     </div>
   </div>
 </div>
 
 <!-- MODAL PLANTILLA -->
 <div id="modal-plantilla" style="display:none" class="modal-bg" onclick="if(event.target===this)document.getElementById('modal-plantilla').style.display='none'">
-  <div class="modal" style="width:420px">
+  <div class="modal" style="width:480px">
     <div class="modal-header" style="padding-bottom:16px">
       <div class="modal-title" id="modal-plantilla-titulo">Nueva entrada en plantilla</div>
     </div>
     <div class="modal-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>Día *</label>
-          <select id="plantilla-dia" style="width:100%">
-            <option value="">Seleccionar...</option>
-            <option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option>
-          </select>
+      <!-- MODO CREACIÓN: multi-selección -->
+      <div id="plantilla-modo-multi">
+        <div class="field">
+          <label>Días <span style="font-weight:400;color:var(--text-muted)">(selecciona uno o varios)</span></label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px" id="plantilla-dias-toggles"></div>
         </div>
-        <div class="field"><label>Franja *</label>
-          <select id="plantilla-franja" style="width:100%"></select>
+        <div class="field">
+          <label>Franjas <span style="font-weight:400;color:var(--text-muted)">(selecciona una o varias)</span></label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px" id="plantilla-franjas-toggles"></div>
+        </div>
+      </div>
+      <!-- MODO EDICIÓN: selectores simples -->
+      <div id="plantilla-modo-edit" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field"><label>Día *</label>
+            <select id="plantilla-dia" style="width:100%">
+              <option value="">Seleccionar...</option>
+              <option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option>
+            </select>
+          </div>
+          <div class="field"><label>Franja *</label>
+            <select id="plantilla-franja" style="width:100%"></select>
+          </div>
         </div>
       </div>
       <div class="field"><label>Tarea *</label><select id="plantilla-tarea" style="width:100%"></select></div>
@@ -245,7 +273,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="document.getElementById('modal-plantilla').style.display='none'">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarPlantilla()"><i class="ti ti-check"></i> Guardar</button>
+      <button class="btn btn-primary" onclick="guardarPlantilla()">✓ Guardar</button>
     </div>
   </div>
 </div>
@@ -271,7 +299,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <div id="modal-err" style="font-size:12px;color:var(--danger);min-height:16px"></div>
       </div>
       <div class="modal-panel" id="panel-capacidades">
-        <div id="caps-nueva-aviso" style="display:none" class="alert alert-info"><i class="ti ti-info-circle"></i>Guarda primero los datos básicos.</div>
+        <div id="caps-nueva-aviso" style="display:none" class="alert alert-info">ℹ️Guarda primero los datos básicos.</div>
         <div id="caps-modal-content">
           <div style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">Capacidades asignadas</div>
           <div id="lista-caps-modal"></div>
@@ -280,7 +308,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <select id="modal-cap-tarea" style="flex:1;min-width:160px"></select>
               <select id="modal-cap-nivel" style="width:auto"><option>Normal</option><option>Básico</option></select>
-              <button class="btn btn-primary btn-sm" onclick="añadirCapModal()"><i class="ti ti-plus"></i> Añadir</button>
+              <button class="btn btn-primary btn-sm" onclick="añadirCapModal()">+ Añadir</button>
             </div>
             <div id="modal-cap-msg" style="font-size:12px;margin-top:6px;min-height:16px"></div>
           </div>
@@ -289,7 +317,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="cerrarModal()">Cerrar</button>
-      <button class="btn btn-primary" id="btn-guardar" onclick="guardarPersona()"><i class="ti ti-check"></i> Guardar</button>
+      <button class="btn btn-primary" id="btn-guardar" onclick="guardarPersona()">✓ Guardar</button>
     </div>
   </div>
 </div>
@@ -297,7 +325,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <div id="modal-borrar" style="display:none" class="modal-bg" onclick="if(event.target===this)document.getElementById('modal-borrar').style.display='none'">
   <div class="modal" style="width:340px">
     <div class="modal-header" style="padding-bottom:16px">
-      <div class="modal-title" style="color:var(--danger)"><i class="ti ti-alert-triangle"></i> Confirmar eliminación</div>
+      <div class="modal-title" style="color:var(--danger)">⚠️ Confirmar eliminación</div>
     </div>
     <div class="modal-body">
       <div id="modal-borrar-msg" style="font-size:13px;margin-bottom:6px"></div>
@@ -305,7 +333,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="document.getElementById('modal-borrar').style.display='none'">Cancelar</button>
-      <button class="btn btn-danger" onclick="confirmarBorrar()"><i class="ti ti-trash"></i> Eliminar</button>
+      <button class="btn btn-danger" onclick="confirmarBorrar()">🗑 Eliminar</button>
     </div>
   </div>
 </div>
@@ -318,16 +346,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <div class="sub">Planificador semanal</div>
     </div>
     <div class="nav-section">Planificación</div>
-    <button class="nav-btn active" onclick="navTo('planning')" id="nav-planning"><i class="ti ti-calendar-week"></i>Planning</button>
+    <button class="nav-btn active" onclick="navTo('planning')" id="nav-planning">📅 Planning</button>
     <div class="nav-section">Gestión</div>
-    <button class="nav-btn" onclick="navTo('personas')" id="nav-personas"><i class="ti ti-users"></i>Personas</button>
-    <button class="nav-btn" onclick="navTo('disponibilidad')" id="nav-disponibilidad"><i class="ti ti-clock"></i>Disponibilidad</button>
-    <button class="nav-btn" onclick="navTo('excepciones')" id="nav-excepciones"><i class="ti ti-calendar-off"></i>Excepciones</button>
-    <button class="nav-btn" onclick="navTo('capacidades')" id="nav-capacidades"><i class="ti ti-certificate"></i>Capacidades</button>
-    <button class="nav-btn" onclick="navTo('tareas')" id="nav-tareas"><i class="ti ti-list-check"></i>Tareas</button>
+    <button class="nav-btn" onclick="navTo('personas')" id="nav-personas">👥 Personas</button>
+    <button class="nav-btn" onclick="navTo('disponibilidad')" id="nav-disponibilidad">🕐 Disponibilidad</button>
+    <button class="nav-btn" onclick="navTo('excepciones')" id="nav-excepciones">🚫 Excepciones</button>
+    <button class="nav-btn" onclick="navTo('capacidades')" id="nav-capacidades">📋 Capacidades</button>
+    <button class="nav-btn" onclick="navTo('tareas')" id="nav-tareas">✅ Tareas</button>
     <div class="nav-section">Sistema</div>
-    <button class="nav-btn" onclick="navTo('reglas')" id="nav-reglas"><i class="ti ti-adjustments"></i>Reglas</button>
-    <button class="nav-btn" onclick="navTo('config')" id="nav-config"><i class="ti ti-database"></i>Conectar Sheets</button>
+    <button class="nav-btn" onclick="navTo('reglas')" id="nav-reglas">⚙️ Reglas</button>
+    <button class="nav-btn" onclick="navTo('config')" id="nav-config">🔗 Conectar Sheets</button>
     <div class="sidebar-footer">
       <div id="conexion-estado">⚪ Sin conectar a Sheets</div>
     </div>
@@ -346,13 +374,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
           <div><label style="font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px">Semana del</label>
           <input type="date" id="fecha-planning" style="width:auto"></div>
-          <button class="btn btn-primary" onclick="generarPlanning()"><i class="ti ti-player-play"></i> Generar planning</button>
-          <button class="btn" onclick="generarPlanning()"><i class="ti ti-refresh"></i> Regenerar</button>
+          <button class="btn btn-primary" onclick="generarPlanning()">▶ Generar planning</button>
+          <button class="btn" onclick="generarPlanning()">↻ Regenerar</button>
         </div>
       </div>
       <div class="dia-tabs" id="dia-tabs"></div>
       <div id="planning-output">
-        <div class="empty"><i class="ti ti-calendar-week"></i>Pulsa "Generar planning" para asignar personas a las tareas de la semana</div>
+        <div class="empty">📅 Pulsa "Generar planning" para asignar personas a las tareas de la semana</div>
       </div>
     </div>
 
@@ -368,7 +396,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
           <input type="text" id="buscar-persona" placeholder="Buscar por nombre..." oninput="renderTablaPersonas()" style="flex:1;min-width:140px">
           <select id="filtro-grupo-p" onchange="renderTablaPersonas()"><option value="">Todos los grupos</option><option>Chicos</option><option>Chicas</option><option>Madres</option><option>Voluntarios</option></select>
           <select id="filtro-activo-p" onchange="renderTablaPersonas()"><option value="">Todos</option><option value="true">Activos</option><option value="false">Inactivos</option></select>
-          <button class="btn btn-primary" onclick="abrirModalNueva()"><i class="ti ti-plus"></i> Nueva persona</button>
+          <button class="btn btn-primary" onclick="abrirModalNueva()">+ Nueva persona</button>
         </div>
         <div class="tbl-wrap">
           <table class="tbl"><thead><tr><th>Nombre</th><th>Grupo</th><th>Estado</th><th>Capacidades</th><th>Prioridad</th><th style="width:80px"></th></tr></thead>
@@ -387,8 +415,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
           <select id="disp-filtro-grupo" onchange="renderDisponibilidad()"><option value="">Todos los grupos</option><option>Chicos</option><option>Chicas</option><option>Madres</option><option>Voluntarios</option></select>
           <input type="text" id="disp-buscar" placeholder="Buscar persona..." oninput="renderDisponibilidad()" style="flex:1">
-          <button class="btn btn-sm" onclick="marcarTodos(true)"><i class="ti ti-check"></i> Todos sí</button>
-          <button class="btn btn-sm" onclick="marcarTodos(false)"><i class="ti ti-x"></i> Todos no</button>
+          <button class="btn btn-sm" onclick="marcarTodos(true)">✓ Todos sí</button>
+          <button class="btn btn-sm" onclick="marcarTodos(false)">✕ Todos no</button>
         </div>
         <div style="overflow-x:auto"><div id="disp-tabla"></div></div>
       </div>
@@ -418,7 +446,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         </div>
         <div class="field"><label>Motivo (opcional)</label><input type="text" id="exc-motivo" placeholder="Ej: médico, salida tarde..."></div>
         <div style="display:flex;align-items:center;gap:10px">
-          <button class="btn btn-primary" onclick="añadirExcepcion()"><i class="ti ti-plus"></i> Añadir excepción</button>
+          <button class="btn btn-primary" onclick="añadirExcepcion()">+ Añadir excepción</button>
           <span id="exc-msg" style="font-size:12px"></span>
         </div>
       </div>
@@ -475,17 +503,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <!-- SECCIÓN TAREAS -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:13px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em">Tareas</div>
-        <button class="btn btn-primary btn-sm" onclick="abrirModalTarea()"><i class="ti ti-plus"></i> Nueva tarea</button>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalTarea()">+ Nueva tarea</button>
       </div>
       <div class="tbl-wrap" style="margin-bottom:20px">
-        <table class="tbl"><thead><tr><th>Icono</th><th>Nombre</th><th>Prioridad</th><th>Personas con capacidad</th><th style="width:80px"></th></tr></thead>
+        <table class="tbl"><thead><tr><th>Icono</th><th>Nombre</th><th>Prioridad</th><th>Personas con capacidad</th><th>Plantilla</th><th style="width:80px"></th></tr></thead>
         <tbody id="tbody-tareas"></tbody></table>
       </div>
 
       <!-- SECCIÓN PLANTILLA -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:13px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em">Plantilla semanal</div>
-        <button class="btn btn-primary btn-sm" onclick="abrirModalPlantilla()"><i class="ti ti-plus"></i> Nueva entrada</button>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalPlantilla()">+ Nueva entrada</button>
       </div>
       <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">
         <select id="filtro-plantilla-dia" onchange="renderTablaPlantilla()" style="min-width:110px">
@@ -514,8 +542,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
           <input type="text" id="config-url" placeholder="https://script.google.com/macros/s/XXXXXX/exec" style="font-family:var(--font-mono);font-size:12px">
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-primary" onclick="guardarConfig()"><i class="ti ti-plug"></i> Conectar y cargar datos</button>
-          <button class="btn" onclick="usarDatosDemo()"><i class="ti ti-test-pipe"></i> Usar datos de demo</button>
+          <button class="btn btn-primary" onclick="guardarConfig()">🔌 Conectar y cargar datos</button>
+          <button class="btn" onclick="usarDatosDemo()">🧪 Usar datos de demo</button>
           <span id="config-msg" style="font-size:12px"></span>
         </div>
       </div>
@@ -634,6 +662,25 @@ function getDatosDemo() {
 // ══════════════════════════════════════════════
 function uid(){ return "x"+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 
+// Convierte cualquier formato de hora a "HH:mm"
+// Acepta: "08:30", "1899-12-30T08:30:00.000Z", Date object
+function parsearHora(val){
+  if(!val) return "";
+  const s = String(val);
+  // Ya es HH:mm
+  if(/^\d{2}:\d{2}$/.test(s)) return s;
+  // ISO date string con hora
+  if(s.includes("T")){
+    try {
+      const d = new Date(s);
+      const h = String(d.getUTCHours()).padStart(2,"0");
+      const m = String(d.getUTCMinutes()).padStart(2,"0");
+      return h+":"+m;
+    } catch(e){ return s; }
+  }
+  return s;
+}
+
 function guardarConfig(){
   const url = document.getElementById("config-url").value.trim();
   const msg = document.getElementById("config-msg");
@@ -661,9 +708,24 @@ async function cargarDatosDesdeSheets(){
 function cargarBD(data){
   BD.personas = data.personas || [];
   BD.tareas = data.tareas || [];
-  BD.franjas = (data.franjas || []).sort((a,b)=>Number(a.Orden)-Number(b.Orden));
+  // Normalizar franjas: acepta "Hora inicio", HoraInicio, o ISO date string
+  BD.franjas = (data.franjas || []).map(f=>{
+    const hi = f.HoraInicio || f["Hora inicio"] || f["hora inicio"] || "";
+    const hf = f.HoraFin || f["Hora fin"] || f["hora fin"] || "";
+    return {
+      ...f,
+      HoraInicio: parsearHora(hi),
+      HoraFin: parsearHora(hf),
+      Orden: Number(f.Orden||0)
+    };
+  }).sort((a,b)=>a.Orden-b.Orden);
   BD.capacidades = data.capacidades || [];
-  BD.plantilla = data.plantilla || [];
+  // Normalizar plantilla
+  BD.plantilla = (data.plantilla || []).map(p=>({
+    ...p,
+    PersonasNecesarias: Number(p.PersonasNecesarias || p["Personas necesarias"] || 0),
+    Activa: p.Activa===true || p.Activa==="TRUE" || p.Activa==="true"
+  }));
   BD.reglas = data.reglas || [];
   BD.excepciones = (data.excepciones || []).map(e=>({...e, franjas: e.franjas||null}));
   // Disponibilidad
@@ -675,8 +737,9 @@ function cargarBD(data){
   if(data.disponibilidad){
     data.disponibilidad.forEach(r=>{
       if(!BD.disponibilidad[r.PersonaID]) return;
-      if(!BD.disponibilidad[r.PersonaID][r.Dia]) return;
-      BD.franjas.forEach(f=>{ BD.disponibilidad[r.PersonaID][r.Dia][f.FranjaID] = r[f.FranjaID]===true; });
+      const dia = r["Dia semana"] || r.Dia || "";
+      if(!BD.disponibilidad[r.PersonaID][dia]) return;
+      BD.franjas.forEach(f=>{ BD.disponibilidad[r.PersonaID][dia][f.FranjaID] = r[f.FranjaID]===true; });
     });
   }
   inicializarUI();
@@ -812,12 +875,12 @@ function setDia(d){ diaActivo=d; document.querySelectorAll(".dia-tab").forEach(b
 function renderPlanning(){
   const out=document.getElementById("planning-output");
   const data=planningResultado[diaActivo];
-  if(!data||!Object.keys(data).length){ out.innerHTML=`<div class="empty"><i class="ti ti-calendar-off"></i>Sin plantilla configurada para ${diaActivo}</div>`; return; }
+  if(!data||!Object.keys(data).length){ out.innerHTML=`<div class="empty">🚫 Sin plantilla configurada para ${diaActivo}</div>`; return; }
   let tA=0,tN=0,sC=0;
   Object.values(data).forEach(slots=>slots.forEach(s=>{ tA+=s.asignados.length; tN+=s.necesarios; sC+=Math.max(0,s.necesarios-s.asignados.length); }));
   let html=sC>0
-    ?`<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i> ${sC} plaza${sC!==1?'s':''} sin cubrir. Revisa capacidades o disponibilidad.</div>`
-    :`<div class="alert alert-ok"><i class="ti ti-circle-check"></i> Todas las plazas cubiertas para ${diaActivo}</div>`;
+    ?`<div class="alert alert-warn">⚠️ ${sC} plaza${sC!==1?'s':''} sin cubrir. Revisa capacidades o disponibilidad.</div>`
+    :`<div class="alert alert-ok">✓ Todas las plazas cubiertas para ${diaActivo}</div>`;
   html+=`<div class="stat-grid" style="margin-bottom:14px"><div class="stat"><div class="stat-n">${tA}</div><div class="stat-label">Personas asignadas</div></div><div class="stat"><div class="stat-n">${tN}</div><div class="stat-label">Plazas totales</div></div><div class="stat"><div class="stat-n" style="color:${sC>0?'var(--danger)':'var(--success)'}">${sC}</div><div class="stat-label">Sin cubrir</div></div></div>`;
   BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden).forEach(franja=>{
     const slots=data[franja.FranjaID]; if(!slots?.length) return;
@@ -865,8 +928,8 @@ function renderTablaPersonas(){
       <td style="color:var(--text-sec)">${nCap} tarea${nCap!==1?'s':''}</td>
       <td style="color:var(--text-sec)">${p.Prioridad||0}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-sm" onclick="abrirModalEditar('${p.PersonaID}')" title="Editar" style="margin-right:4px"><i class="ti ti-edit"></i></button>
-        <button class="btn btn-sm btn-danger" onclick="abrirModalBorrar('${p.PersonaID}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+        <button class="btn btn-sm" onclick="abrirModalEditar('${p.PersonaID}')" title="Editar" style="margin-right:4px">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="abrirModalBorrar('${p.PersonaID}')" title="Eliminar">🗑</button>
       </td>
     </tr>`;
   }).join("");
@@ -894,7 +957,7 @@ function switchTab(tab){
 function renderCapsModal(pID){
   const caps=BD.capacidades.filter(c=>c.PersonaID===pID);
   document.getElementById("lista-caps-modal").innerHTML=caps.length
-    ? caps.map(c=>{ const t=BD.tareas.find(t=>t.TareaID===c.TareaID); return `<div class="cap-row"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">${t?.Icono||''}</span><span>${t?.Nombre||c.TareaID}</span></div><div style="display:flex;align-items:center;gap:8px"><span class="nivel-pill ${c.Nivel==='Normal'?'nivel-normal':'nivel-basico'}">${c.Nivel}</span><button class="btn btn-sm btn-danger" onclick="eliminarCapModal('${c.id}','${pID}')"><i class="ti ti-trash"></i></button></div></div>`; }).join("")
+    ? caps.map(c=>{ const t=BD.tareas.find(t=>t.TareaID===c.TareaID); return `<div class="cap-row"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">${t?.Icono||''}</span><span>${t?.Nombre||c.TareaID}</span></div><div style="display:flex;align-items:center;gap:8px"><span class="nivel-pill ${c.Nivel==='Normal'?'nivel-normal':'nivel-basico'}">${c.Nivel}</span><button class="btn btn-sm btn-danger" onclick="eliminarCapModal('${c.id}','${pID}')">🗑</button></div></div>`; }).join("")
     : `<div style="color:var(--text-muted);font-size:13px;font-style:italic;margin-bottom:10px">Sin capacidades asignadas</div>`;
   const disponibles=BD.tareas.filter(t=>!caps.some(c=>c.TareaID===t.TareaID));
   const sel=document.getElementById("modal-cap-tarea");
@@ -994,7 +1057,7 @@ function renderDisponibilidad(){
   const q=document.getElementById("disp-buscar").value.toLowerCase();
   const personas=BD.personas.filter(p=>p.Activo&&(!g||p.Grupo===g)&&(!q||p.Nombre.toLowerCase().includes(q)));
   const franjas=BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden);
-  if(!personas.length){ document.getElementById("disp-tabla").innerHTML=`<div class="empty"><i class="ti ti-users"></i>Sin personas que mostrar</div>`; return; }
+  if(!personas.length){ document.getElementById("disp-tabla").innerHTML=`<div class="empty">👥 Sin personas que mostrar</div>`; return; }
   let html=`<table style="border-collapse:collapse;font-size:12px;min-width:620px"><thead><tr><th style="text-align:left;padding:6px 10px;color:var(--text-muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;min-width:140px;background:var(--surface2)">Persona</th>`;
   DIAS.forEach((dia,di)=>{ franjas.forEach(f=>{ html+=`<th style="padding:3px;color:var(--text-muted);text-align:center;min-width:30px;background:var(--surface2);font-size:10px">${di===0?f.FranjaID:''}</th>`; }); if(di<DIAS.length-1) html+=`<th style="width:8px;background:var(--surface2)"></th>`; });
   html+=`</tr><tr><td style="background:var(--surface2)"></td>`;
@@ -1035,7 +1098,7 @@ function renderFranjasToggles(){
   if(!cont) return;
   cont.innerHTML=BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden).map(f=>{
     const on=excFranjasActivas.has(f.FranjaID);
-    return `<div class="franja-toggle ${on?'on':'off'}" onclick="toggleFranja('${f.FranjaID}')" title="${f.HoraInicio}–${f.HoraFin}">${f.FranjaID}</div>`;
+    return `<div class="franja-toggle ${on?'on':'off'}" onclick="toggleFranja('${f.FranjaID}')" title="${f.FranjaID}" style="width:auto;padding:0 8px;font-size:11px">${f.HoraInicio}–${f.HoraFin}</div>`;
   }).join("");
 }
 
@@ -1076,8 +1139,8 @@ function renderTablaExcepciones(){
   tb.innerHTML=BD.excepciones.map(e=>{
     const p=BD.personas.find(p=>p.PersonaID===e.PersonaID);
     const gc=GRUPO_CLASS[p?.Grupo]||"chicos";
-    const franjasHtml=!e.franjas?`<span style="font-size:11px;color:var(--text-muted)">Día completo</span>`:e.franjas.map(f=>`<span class="fb">${f}</span>`).join("");
-    return `<tr><td><span style="font-weight:500">${p?.Nombre||e.PersonaID}</span> <span class="badge badge-${gc}">${p?.Grupo||''}</span></td><td style="font-size:12px">${e.desde}</td><td style="font-size:12px">${e.hasta}</td><td>${franjasHtml}</td><td style="font-size:12px;color:var(--text-sec)">${e.motivo||'—'}</td><td><button class="btn btn-sm btn-danger" onclick="eliminarExcepcion('${e.id}')"><i class="ti ti-trash"></i></button></td></tr>`;
+    const franjasHtml=!e.franjas?`<span style="font-size:11px;color:var(--text-muted)">Día completo</span>`:e.franjas.map(fID=>{ const fr=BD.franjas.find(f=>f.FranjaID===fID); return `<span class="fb" title="${fID}">${fr?fr.HoraInicio+'–'+fr.HoraFin:fID}</span>`; }).join("");
+    return `<tr><td><span style="font-weight:500">${p?.Nombre||e.PersonaID}</span> <span class="badge badge-${gc}">${p?.Grupo||''}</span></td><td style="font-size:12px">${e.desde}</td><td style="font-size:12px">${e.hasta}</td><td>${franjasHtml}</td><td style="font-size:12px;color:var(--text-sec)">${e.motivo||'—'}</td><td><button class="btn btn-sm btn-danger" onclick="eliminarExcepcion('${e.id}')">🗑</button></td></tr>`;
   }).join("");
 }
 
@@ -1100,7 +1163,7 @@ function renderTablaCapacidades(){
   tb.innerHTML=caps.map(c=>{
     const p=BD.personas.find(p=>p.PersonaID===c.PersonaID), t=BD.tareas.find(t=>t.TareaID===c.TareaID);
     const gc=GRUPO_CLASS[p?.Grupo]||"chicos"; const nCls=c.Nivel==="Normal"?"nivel-normal":"nivel-basico";
-    return `<tr><td style="font-weight:500">${p?.Nombre||c.PersonaID}</td><td><span class="badge badge-${gc}">${p?.Grupo||''}</span></td><td>${t?.Icono||''} ${t?.Nombre||c.TareaID}</td><td><span class="nivel-pill ${nCls}">${c.Nivel}</span></td><td><button class="btn btn-sm btn-danger" onclick="BD.capacidades=BD.capacidades.filter(c=>c.id!=='${c.id}');renderTablaCapacidades();renderTablaPersonas()"><i class="ti ti-trash"></i></button></td></tr>`;
+    return `<tr><td style="font-weight:500">${p?.Nombre||c.PersonaID}</td><td><span class="badge badge-${gc}">${p?.Grupo||''}</span></td><td>${t?.Icono||''} ${t?.Nombre||c.TareaID}</td><td><span class="nivel-pill ${nCls}">${c.Nivel}</span></td><td><button class="btn btn-sm btn-danger" onclick="BD.capacidades=BD.capacidades.filter(c=>c.id!=='${c.id}');renderTablaCapacidades();renderTablaPersonas()">🗑</button></td></tr>`;
   }).join("");
 }
 
@@ -1129,20 +1192,98 @@ let plantillaEditID = null;
 
 function renderTablaTareas(){
   const tb = document.getElementById("tbody-tareas");
-  if(!BD.tareas.length){ tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Sin tareas</td></tr>`; return; }
+  if(!BD.tareas.length){ tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">Sin tareas</td></tr>`; return; }
   tb.innerHTML = BD.tareas.map(t=>{
     const nCap = BD.capacidades.filter(c=>c.TareaID===t.TareaID).length;
+    const nPlant = BD.plantilla.filter(p=>p.TareaID===t.TareaID).length;
     return `<tr>
       <td style="font-size:20px;text-align:center">${t.Icono||''}</td>
       <td style="font-weight:500">${t.Nombre}</td>
       <td style="color:var(--text-sec)">P${t.Prioridad||1}</td>
       <td style="color:var(--text-sec)">${nCap} persona${nCap!==1?'s':''}</td>
+      <td><button class="btn btn-sm" onclick="abrirEditorPlantillaTarea('${t.TareaID}')" style="font-size:11px">📅 Plantilla (${nPlant})</button></td>
       <td style="white-space:nowrap">
-        <button class="btn btn-sm" onclick="abrirModalTarea('${t.TareaID}')" style="margin-right:4px"><i class="ti ti-edit"></i></button>
-        <button class="btn btn-sm btn-danger" onclick="eliminarTarea('${t.TareaID}')"><i class="ti ti-trash"></i></button>
+        <button class="btn btn-sm" onclick="abrirModalTarea('${t.TareaID}')" style="margin-right:4px">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="eliminarTarea('${t.TareaID}')">🗑</button>
       </td>
     </tr>`;
   }).join("");
+}
+
+// Editor de plantilla por tarea — modal con pestañas de día
+let mptDiaActivo = "Lunes";
+let mptTareaID = null;
+
+function abrirEditorPlantillaTarea(tareaID){
+  mptTareaID = tareaID;
+  mptDiaActivo = "Lunes";
+  const t = BD.tareas.find(t=>t.TareaID===tareaID);
+  document.getElementById("mpt-titulo").textContent = `${t?.Icono||''} ${t?.Nombre||''} — Plantilla semanal`;
+  renderMptTabs();
+  renderMptBody();
+  document.getElementById("modal-plantilla-tarea").style.display = "flex";
+}
+
+function renderMptTabs(){
+  document.getElementById("mpt-tabs").innerHTML = DIAS.map(d=>
+    `<button class="modal-tab${d===mptDiaActivo?' active':''}" onclick="setMptDia('${d}')">${d}</button>`
+  ).join("");
+}
+
+function setMptDia(dia){ mptDiaActivo=dia; renderMptTabs(); renderMptBody(); }
+
+function renderMptBody(){
+  const franjas = BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden);
+  let html = `<div style="display:flex;flex-direction:column;gap:8px">`;
+  franjas.forEach(f=>{
+    const entrada = BD.plantilla.find(p=>p.TareaID===mptTareaID&&p.Dia===mptDiaActivo&&p.FranjaID===f.FranjaID);
+    const activa = entrada?.Activa===true;
+    const necesarias = entrada?.PersonasNecesarias||1;
+    html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:${entrada?'var(--surface)':'var(--surface2)'}">
+      <div style="min-width:110px;font-size:12px;font-weight:600">${f.HoraInicio} – ${f.HoraFin}</div>
+      <div style="font-size:11px;color:var(--text-muted);min-width:30px">${f.FranjaID}</div>
+      ${entrada ? `
+        <div style="display:flex;align-items:center;gap:6px;flex:1">
+          <span style="font-size:12px;color:var(--text-sec)">Personas:</span>
+          <input type="number" value="${necesarias}" min="1" max="50"
+            style="width:60px;text-align:center;padding:4px 6px;border-radius:var(--radius);border:1px solid var(--border-strong);font-size:13px"
+            onchange="actualizarPersonasPlantilla('${entrada.PlantillaID}',this.value)">
+        </div>
+        <button onclick="toggleActivaPlantillaMpt('${entrada.PlantillaID}')"
+          style="padding:4px 10px;border-radius:99px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;${activa?'background:var(--success-light);color:#155724;border-color:#b8dfc8':'background:var(--surface2);color:var(--text-muted);border-color:var(--border-strong)'}">
+          ${activa?'✓ Activa':'○ Inactiva'}
+        </button>
+        <button onclick="eliminarEntradaPlantillaMpt('${entrada.PlantillaID}')"
+          style="padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border-danger);background:var(--danger-light);color:var(--danger);font-size:11px;cursor:pointer">🗑</button>
+      ` : `
+        <div style="flex:1;font-size:12px;color:var(--text-muted);font-style:italic">Sin asignar</div>
+        <button onclick="añadirEntradaPlantillaMpt('${f.FranjaID}')"
+          style="padding:4px 10px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--surface);font-size:11px;cursor:pointer;color:var(--accent)">+ Añadir</button>
+      `}
+    </div>`;
+  });
+  html += `</div>`;
+  document.getElementById("mpt-body").innerHTML = html;
+}
+
+function actualizarPersonasPlantilla(plantillaID, valor){
+  const p = BD.plantilla.find(p=>p.PlantillaID===plantillaID);
+  if(p){ p.PersonasNecesarias = Number(valor)||1; renderTablaPlantilla(); }
+}
+
+function toggleActivaPlantillaMpt(plantillaID){
+  const p = BD.plantilla.find(p=>p.PlantillaID===plantillaID);
+  if(p){ p.Activa=!p.Activa; renderMptBody(); renderTablaPlantilla(); renderTablaTareas(); }
+}
+
+function eliminarEntradaPlantillaMpt(plantillaID){
+  BD.plantilla = BD.plantilla.filter(p=>p.PlantillaID!==plantillaID);
+  renderMptBody(); renderTablaPlantilla(); renderTablaTareas();
+}
+
+function añadirEntradaPlantillaMpt(franjaID){
+  BD.plantilla.push({PlantillaID:uid(), Dia:mptDiaActivo, FranjaID:franjaID, TareaID:mptTareaID, PersonasNecesarias:1, Activa:true});
+  renderMptBody(); renderTablaPlantilla(); renderTablaTareas();
 }
 
 function abrirModalTarea(tareaID){
@@ -1190,6 +1331,9 @@ function actualizarSelectsTareas(){
 }
 
 // ── PLANTILLA ──
+let plantillaDiasSeleccionados = new Set();
+let plantillaFranjasSeleccionadas = new Set();
+
 function renderTablaPlantilla(){
   const fDia = document.getElementById("filtro-plantilla-dia")?.value||"";
   const fTarea = document.getElementById("filtro-plantilla-tarea")?.value||"";
@@ -1208,14 +1352,14 @@ function renderTablaPlantilla(){
     const activaStyle = p.Activa?"background:var(--success-light);color:#155724":"background:var(--surface2);color:var(--text-muted)";
     return `<tr>
       <td style="font-weight:500">${p.Dia}</td>
-      <td><span style="font-size:11px;font-weight:700;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 7px">${p.FranjaID}</span></td>
-      <td style="font-size:12px;color:var(--text-muted)">${f?.HoraInicio||''} – ${f?.HoraFin||''}</td>
+      <td><span style="font-size:11px;font-weight:700;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 7px">${f?.HoraInicio||p.FranjaID}–${f?.HoraFin||''}</span></td>
+      <td style="font-size:12px;color:var(--text-muted)">${p.FranjaID}</td>
       <td>${t?.Icono||''} <span style="font-weight:500">${t?.Nombre||p.TareaID}</span></td>
       <td style="text-align:center;font-weight:600">${p.PersonasNecesarias}</td>
       <td><span style="font-size:11px;padding:2px 8px;border-radius:99px;cursor:pointer;${activaStyle}" onclick="togglePlantillaActiva('${p.PlantillaID}')">${p.Activa?'Sí':'No'}</span></td>
       <td style="white-space:nowrap">
-        <button class="btn btn-sm" onclick="abrirModalPlantilla('${p.PlantillaID}')" style="margin-right:4px"><i class="ti ti-edit"></i></button>
-        <button class="btn btn-sm btn-danger" onclick="eliminarPlantilla('${p.PlantillaID}')"><i class="ti ti-trash"></i></button>
+        <button class="btn btn-sm" onclick="abrirModalPlantilla('${p.PlantillaID}')" style="margin-right:4px">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="eliminarPlantilla('${p.PlantillaID}')">🗑</button>
       </td>
     </tr>`;
   }).join("");
@@ -1224,21 +1368,29 @@ function renderTablaPlantilla(){
 function abrirModalPlantilla(plantillaID){
   plantillaEditID = plantillaID || null;
   const p = plantillaID ? BD.plantilla.find(p=>p.PlantillaID===plantillaID) : null;
-  document.getElementById("modal-plantilla-titulo").textContent = p ? "Editar entrada" : "Nueva entrada en plantilla";
-  // Rellenar franjas
-  const selF = document.getElementById("plantilla-franja");
-  selF.innerHTML = BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden).map(f=>`<option value="${f.FranjaID}">${f.FranjaID} (${f.HoraInicio}–${f.HoraFin})</option>`).join("");
-  // Rellenar tareas
   const selT = document.getElementById("plantilla-tarea");
   selT.innerHTML = BD.tareas.map(t=>`<option value="${t.TareaID}">${t.Icono||''} ${t.Nombre}</option>`).join("");
   if(p){
+    // MODO EDICIÓN
+    document.getElementById("modal-plantilla-titulo").textContent = "Editar entrada";
+    document.getElementById("plantilla-modo-multi").style.display = "none";
+    document.getElementById("plantilla-modo-edit").style.display = "block";
+    const selF = document.getElementById("plantilla-franja");
+    selF.innerHTML = BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden).map(f=>`<option value="${f.FranjaID}">${f.HoraInicio}–${f.HoraFin} (${f.FranjaID})</option>`).join("");
     document.getElementById("plantilla-dia").value = p.Dia;
     selF.value = p.FranjaID;
     selT.value = p.TareaID;
     document.getElementById("plantilla-necesarias").value = p.PersonasNecesarias;
     document.getElementById("plantilla-activa").value = String(p.Activa);
   } else {
-    document.getElementById("plantilla-dia").value = "";
+    // MODO CREACIÓN multi-selección
+    document.getElementById("modal-plantilla-titulo").textContent = "Nueva entrada en plantilla";
+    document.getElementById("plantilla-modo-multi").style.display = "block";
+    document.getElementById("plantilla-modo-edit").style.display = "none";
+    plantillaDiasSeleccionados = new Set();
+    plantillaFranjasSeleccionadas = new Set();
+    renderPlantillaDiasToggles();
+    renderPlantillaFranjasToggles();
     document.getElementById("plantilla-necesarias").value = 1;
     document.getElementById("plantilla-activa").value = "true";
   }
@@ -1246,21 +1398,59 @@ function abrirModalPlantilla(plantillaID){
   document.getElementById("modal-plantilla").style.display = "flex";
 }
 
+function renderPlantillaDiasToggles(){
+  const cont = document.getElementById("plantilla-dias-toggles");
+  const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes"];
+  cont.innerHTML = dias.map(d=>{
+    const sel = plantillaDiasSeleccionados.has(d);
+    return `<div class="franja-toggle ${sel?'on':'off'}" onclick="togglePlantillaDia('${d}')" style="width:auto;padding:0 10px;font-size:12px">${d}</div>`;
+  }).join("");
+}
+
+function renderPlantillaFranjasToggles(){
+  const cont = document.getElementById("plantilla-franjas-toggles");
+  cont.innerHTML = BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden).map(f=>{
+    const sel = plantillaFranjasSeleccionadas.has(f.FranjaID);
+    return `<div class="franja-toggle ${sel?'on':'off'}" onclick="togglePlantillaFranja('${f.FranjaID}')" title="${f.FranjaID}" style="width:auto;padding:0 8px;font-size:11px">${f.HoraInicio}–${f.HoraFin}</div>`;
+  }).join("");
+}
+
+function togglePlantillaDia(dia){
+  if(plantillaDiasSeleccionados.has(dia)) plantillaDiasSeleccionados.delete(dia);
+  else plantillaDiasSeleccionados.add(dia);
+  renderPlantillaDiasToggles();
+}
+
+function togglePlantillaFranja(fID){
+  if(plantillaFranjasSeleccionadas.has(fID)) plantillaFranjasSeleccionadas.delete(fID);
+  else plantillaFranjasSeleccionadas.add(fID);
+  renderPlantillaFranjasToggles();
+}
+
 function guardarPlantilla(){
-  const dia = document.getElementById("plantilla-dia").value;
-  const franjaID = document.getElementById("plantilla-franja").value;
   const tareaID = document.getElementById("plantilla-tarea").value;
   const necesarias = Number(document.getElementById("plantilla-necesarias").value)||1;
   const activa = document.getElementById("plantilla-activa").value === "true";
   const err = document.getElementById("plantilla-err");
-  if(!dia){ err.textContent="Selecciona un día"; return; }
-  if(!franjaID){ err.textContent="Selecciona una franja"; return; }
   if(!tareaID){ err.textContent="Selecciona una tarea"; return; }
   if(plantillaEditID){
+    const dia = document.getElementById("plantilla-dia").value;
+    const franjaID = document.getElementById("plantilla-franja").value;
+    if(!dia){ err.textContent="Selecciona un día"; return; }
+    if(!franjaID){ err.textContent="Selecciona una franja"; return; }
     const p = BD.plantilla.find(p=>p.PlantillaID===plantillaEditID);
     if(p){ p.Dia=dia; p.FranjaID=franjaID; p.TareaID=tareaID; p.PersonasNecesarias=necesarias; p.Activa=activa; }
   } else {
-    BD.plantilla.push({PlantillaID:uid(), Dia:dia, FranjaID:franjaID, TareaID:tareaID, PersonasNecesarias:necesarias, Activa:activa});
+    if(plantillaDiasSeleccionados.size===0){ err.textContent="Selecciona al menos un día"; return; }
+    if(plantillaFranjasSeleccionadas.size===0){ err.textContent="Selecciona al menos una franja"; return; }
+    let creadas = 0;
+    plantillaDiasSeleccionados.forEach(dia=>{
+      plantillaFranjasSeleccionadas.forEach(franjaID=>{
+        const existe = BD.plantilla.some(p=>p.Dia===dia&&p.FranjaID===franjaID&&p.TareaID===tareaID);
+        if(!existe){ BD.plantilla.push({PlantillaID:uid(), Dia:dia, FranjaID:franjaID, TareaID:tareaID, PersonasNecesarias:necesarias, Activa:activa}); creadas++; }
+      });
+    });
+    if(creadas===0){ err.textContent="Ya existen todas esas combinaciones"; return; }
   }
   document.getElementById("modal-plantilla").style.display="none";
   renderTablaPlantilla();
