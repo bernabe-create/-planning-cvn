@@ -663,13 +663,15 @@ function getDatosDemo() {
 function uid(){ return "x"+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 
 // Convierte cualquier formato de hora a "HH:mm"
-// Acepta: "08:30", "1899-12-30T08:30:00.000Z", Date object
+// Acepta: "8:30", "08:30", "1899-12-30T08:30:00.000Z"
 function parsearHora(val){
   if(!val) return "";
-  const s = String(val);
-  // Ya es HH:mm
+  const s = String(val).trim();
+  // Ya es HH:mm con cero inicial
   if(/^\d{2}:\d{2}$/.test(s)) return s;
-  // ISO date string con hora
+  // H:mm sin cero inicial → añadir cero
+  if(/^\d{1}:\d{2}$/.test(s)) return "0" + s;
+  // ISO date string con hora (1899-12-30T08:30:00.000Z)
   if(s.includes("T")){
     try {
       const d = new Date(s);
@@ -719,7 +721,10 @@ function cargarBD(data){
       Orden: Number(f.Orden||0)
     };
   }).sort((a,b)=>a.Orden-b.Orden);
-  BD.capacidades = data.capacidades || [];
+  BD.capacidades = (data.capacidades || []).map(c=>({
+    ...c,
+    id: c.id || c.CapacidadID || uid()
+  }));
   // Normalizar plantilla
   BD.plantilla = (data.plantilla || []).map(p=>({
     ...p,
@@ -956,13 +961,27 @@ function switchTab(tab){
 
 function renderCapsModal(pID){
   const caps=BD.capacidades.filter(c=>c.PersonaID===pID);
+  // Normalizar IDs: si vienen de Sheets usan CapacidadID, en local usan id
+  caps.forEach(c=>{ if(!c.id) c.id = c.CapacidadID || uid(); });
   document.getElementById("lista-caps-modal").innerHTML=caps.length
-    ? caps.map(c=>{ const t=BD.tareas.find(t=>t.TareaID===c.TareaID); return `<div class="cap-row"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">${t?.Icono||''}</span><span>${t?.Nombre||c.TareaID}</span></div><div style="display:flex;align-items:center;gap:8px"><span class="nivel-pill ${c.Nivel==='Normal'?'nivel-normal':'nivel-basico'}">${c.Nivel}</span><button class="btn btn-sm btn-danger" onclick="eliminarCapModal('${c.id}','${pID}')">🗑</button></div></div>`; }).join("")
+    ? caps.map(c=>{
+        const t=BD.tareas.find(t=>t.TareaID===c.TareaID);
+        return `<div class="cap-row">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">${t?.Icono||''}</span>
+            <span>${t?.Nombre||c.TareaID}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="nivel-pill ${c.Nivel==='Normal'?'nivel-normal':'nivel-basico'}">${c.Nivel}</span>
+            <button class="btn btn-sm btn-danger" onclick="eliminarCapModal('${c.id}','${pID}')">🗑</button>
+          </div>
+        </div>`;
+      }).join("")
     : `<div style="color:var(--text-muted);font-size:13px;font-style:italic;margin-bottom:10px">Sin capacidades asignadas</div>`;
   const disponibles=BD.tareas.filter(t=>!caps.some(c=>c.TareaID===t.TareaID));
   const sel=document.getElementById("modal-cap-tarea");
   sel.disabled=!disponibles.length;
-  sel.innerHTML=disponibles.length?disponibles.map(t=>`<option value="${t.TareaID}">${t.Icono} ${t.Nombre}</option>`).join(""):`<option>Todas las tareas asignadas</option>`;
+  sel.innerHTML=disponibles.length?disponibles.map(t=>`<option value="${t.TareaID}">${t.Icono||''} ${t.Nombre}</option>`).join(""):`<option>Todas las tareas asignadas</option>`;
   document.getElementById("modal-cap-msg").textContent="";
 }
 
@@ -978,7 +997,14 @@ function añadirCapModal(){
   setTimeout(()=>msg.innerHTML="",2000);
 }
 
-function eliminarCapModal(id,pID){ BD.capacidades=BD.capacidades.filter(c=>c.id!==id); renderCapsModal(pID); renderTablaPersonas(); renderTablaCapacidades(); }
+function eliminarCapModal(id,pID){
+  // Buscar por c.id o c.CapacidadID (cuando viene de Sheets)
+  BD.capacidades = BD.capacidades.filter(c => {
+    const cid = c.id || c.CapacidadID || "";
+    return String(cid) !== String(id);
+  });
+  renderCapsModal(pID); renderTablaPersonas(); renderTablaCapacidades();
+}
 
 function abrirModalNueva(){
   modalEditID=null;
