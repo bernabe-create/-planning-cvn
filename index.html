@@ -199,6 +199,57 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 </head>
 <body>
 
+<!-- MODAL TAREA -->
+<div id="modal-tarea" style="display:none" class="modal-bg" onclick="if(event.target===this)document.getElementById('modal-tarea').style.display='none'">
+  <div class="modal" style="width:400px">
+    <div class="modal-header" style="padding-bottom:16px">
+      <div class="modal-title" id="modal-tarea-titulo">Nueva tarea</div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Icono (emoji)</label><input type="text" id="tarea-icono" placeholder="🔨" style="width:70px;font-size:20px;text-align:center"></div>
+      <div class="field"><label>Nombre *</label><input type="text" id="tarea-nombre" placeholder="Nombre de la tarea"></div>
+      <div class="field"><label>Prioridad <span style="font-weight:400;color:var(--text-muted)">(1 = alta)</span></label><input type="number" id="tarea-prioridad" value="1" min="1" max="10" style="width:80px"></div>
+      <div id="tarea-err" style="font-size:12px;color:var(--danger);min-height:16px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="document.getElementById('modal-tarea').style.display='none'">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarTarea()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PLANTILLA -->
+<div id="modal-plantilla" style="display:none" class="modal-bg" onclick="if(event.target===this)document.getElementById('modal-plantilla').style.display='none'">
+  <div class="modal" style="width:420px">
+    <div class="modal-header" style="padding-bottom:16px">
+      <div class="modal-title" id="modal-plantilla-titulo">Nueva entrada en plantilla</div>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Día *</label>
+          <select id="plantilla-dia" style="width:100%">
+            <option value="">Seleccionar...</option>
+            <option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option>
+          </select>
+        </div>
+        <div class="field"><label>Franja *</label>
+          <select id="plantilla-franja" style="width:100%"></select>
+        </div>
+      </div>
+      <div class="field"><label>Tarea *</label><select id="plantilla-tarea" style="width:100%"></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Personas necesarias *</label><input type="number" id="plantilla-necesarias" value="1" min="1" max="50" style="width:100%"></div>
+        <div class="field"><label>Activa</label><select id="plantilla-activa" style="width:100%"><option value="true">Sí</option><option value="false">No</option></select></div>
+      </div>
+      <div id="plantilla-err" style="font-size:12px;color:var(--danger);min-height:16px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="document.getElementById('modal-plantilla').style.display='none'">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPlantilla()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODALES -->
 <div id="modal-persona" style="display:none" class="modal-bg" onclick="if(event.target===this)cerrarModal()">
   <div class="modal">
@@ -273,6 +324,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <button class="nav-btn" onclick="navTo('disponibilidad')" id="nav-disponibilidad"><i class="ti ti-clock"></i>Disponibilidad</button>
     <button class="nav-btn" onclick="navTo('excepciones')" id="nav-excepciones"><i class="ti ti-calendar-off"></i>Excepciones</button>
     <button class="nav-btn" onclick="navTo('capacidades')" id="nav-capacidades"><i class="ti ti-certificate"></i>Capacidades</button>
+    <button class="nav-btn" onclick="navTo('tareas')" id="nav-tareas"><i class="ti ti-list-check"></i>Tareas</button>
     <div class="nav-section">Sistema</div>
     <button class="nav-btn" onclick="navTo('reglas')" id="nav-reglas"><i class="ti ti-adjustments"></i>Reglas</button>
     <button class="nav-btn" onclick="navTo('config')" id="nav-config"><i class="ti ti-database"></i>Conectar Sheets</button>
@@ -410,6 +462,43 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
           <strong>R2 — Formación primero:</strong> Las primeras franjas disponibles (hasta el máximo configurado) van a Formación Taller o Externa.<br>
           <strong>R3 — Rotación suave:</strong> Si hizo una tarea ayer, se penaliza esa tarea hoy para favorecer la variedad.
         </div>
+      </div>
+    </div>
+
+    <!-- TAREAS -->
+    <div id="page-tareas" class="page">
+      <div class="page-header">
+        <div class="page-title">Tareas</div>
+        <div class="page-sub">Gestiona las tareas y la plantilla semanal</div>
+      </div>
+
+      <!-- SECCIÓN TAREAS -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em">Tareas</div>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalTarea()"><i class="ti ti-plus"></i> Nueva tarea</button>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:20px">
+        <table class="tbl"><thead><tr><th>Icono</th><th>Nombre</th><th>Prioridad</th><th>Personas con capacidad</th><th style="width:80px"></th></tr></thead>
+        <tbody id="tbody-tareas"></tbody></table>
+      </div>
+
+      <!-- SECCIÓN PLANTILLA -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em">Plantilla semanal</div>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalPlantilla()"><i class="ti ti-plus"></i> Nueva entrada</button>
+      </div>
+      <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">
+        <select id="filtro-plantilla-dia" onchange="renderTablaPlantilla()" style="min-width:110px">
+          <option value="">Todos los días</option>
+          <option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option>
+        </select>
+        <select id="filtro-plantilla-tarea" onchange="renderTablaPlantilla()" style="min-width:150px">
+          <option value="">Todas las tareas</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl"><thead><tr><th>Día</th><th>Franja</th><th>Horario</th><th>Tarea</th><th>Personas necesarias</th><th>Activa</th><th style="width:80px"></th></tr></thead>
+        <tbody id="tbody-plantilla"></tbody></table>
       </div>
     </div>
 
@@ -607,7 +696,7 @@ function inicializarUI(){
   actualizarSelects();
   document.getElementById("filtro-ct").innerHTML=`<option value="">Todas las tareas</option>`+BD.tareas.map(t=>`<option value="${t.TareaID}">${t.Icono} ${t.Nombre}</option>`).join("");
   document.getElementById("modal-cap-tarea").innerHTML=BD.tareas.map(t=>`<option value="${t.TareaID}">${t.Icono} ${t.Nombre}</option>`).join("");
-  renderTablaPersonas(); renderStatsPersonas(); renderTablaCapacidades(); renderTablaExcepciones(); renderReglas(); renderFranjasToggles();
+  renderTablaPersonas(); renderStatsPersonas(); renderTablaCapacidades(); renderTablaExcepciones(); renderReglas(); renderFranjasToggles(); actualizarSelectsTareas();
   document.getElementById("dia-tabs").innerHTML=DIAS.map(d=>`<button class="dia-tab${d===diaActivo?' active':''}" onclick="setDia('${d}')">${d}</button>`).join("");
   // Fecha por defecto: lunes de la semana actual
   const hoy = new Date(); const dia = hoy.getDay(); const lunes = new Date(hoy);
@@ -1033,6 +1122,162 @@ function renderReglas(){
 }
 
 // ══════════════════════════════════════════════
+// TAREAS
+// ══════════════════════════════════════════════
+let tareaEditID = null;
+let plantillaEditID = null;
+
+function renderTablaTareas(){
+  const tb = document.getElementById("tbody-tareas");
+  if(!BD.tareas.length){ tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Sin tareas</td></tr>`; return; }
+  tb.innerHTML = BD.tareas.map(t=>{
+    const nCap = BD.capacidades.filter(c=>c.TareaID===t.TareaID).length;
+    return `<tr>
+      <td style="font-size:20px;text-align:center">${t.Icono||''}</td>
+      <td style="font-weight:500">${t.Nombre}</td>
+      <td style="color:var(--text-sec)">P${t.Prioridad||1}</td>
+      <td style="color:var(--text-sec)">${nCap} persona${nCap!==1?'s':''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" onclick="abrirModalTarea('${t.TareaID}')" style="margin-right:4px"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="eliminarTarea('${t.TareaID}')"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function abrirModalTarea(tareaID){
+  tareaEditID = tareaID || null;
+  const t = tareaID ? BD.tareas.find(t=>t.TareaID===tareaID) : null;
+  document.getElementById("modal-tarea-titulo").textContent = t ? "Editar tarea" : "Nueva tarea";
+  document.getElementById("tarea-icono").value = t?.Icono || "";
+  document.getElementById("tarea-nombre").value = t?.Nombre || "";
+  document.getElementById("tarea-prioridad").value = t?.Prioridad || 1;
+  document.getElementById("tarea-err").textContent = "";
+  document.getElementById("modal-tarea").style.display = "flex";
+}
+
+function guardarTarea(){
+  const nombre = document.getElementById("tarea-nombre").value.trim();
+  const icono = document.getElementById("tarea-icono").value.trim();
+  const prioridad = Number(document.getElementById("tarea-prioridad").value)||1;
+  const err = document.getElementById("tarea-err");
+  if(!nombre){ err.textContent="El nombre es obligatorio"; return; }
+  if(tareaEditID){
+    const t = BD.tareas.find(t=>t.TareaID===tareaEditID);
+    if(t){ t.Nombre=nombre; t.Icono=icono; t.Prioridad=prioridad; }
+  } else {
+    BD.tareas.push({TareaID:uid(), Nombre:nombre, Icono:icono, Prioridad:prioridad});
+  }
+  document.getElementById("modal-tarea").style.display="none";
+  renderTablaTareas(); actualizarSelectsTareas();
+}
+
+function eliminarTarea(tareaID){
+  if(!confirm("¿Eliminar esta tarea? Se eliminarán también sus capacidades y entradas en la plantilla.")) return;
+  BD.tareas = BD.tareas.filter(t=>t.TareaID!==tareaID);
+  BD.capacidades = BD.capacidades.filter(c=>c.TareaID!==tareaID);
+  BD.plantilla = BD.plantilla.filter(p=>p.TareaID!==tareaID);
+  renderTablaTareas(); renderTablaPlantilla(); renderTablaCapacidades();
+}
+
+function actualizarSelectsTareas(){
+  const opts = BD.tareas.map(t=>`<option value="${t.TareaID}">${t.Icono||''} ${t.Nombre}</option>`).join("");
+  const ptOpts = `<option value="">Todas las tareas</option>`+opts;
+  const fpt = document.getElementById("filtro-plantilla-tarea"); if(fpt){ const v=fpt.value; fpt.innerHTML=ptOpts; fpt.value=v; }
+  const pt = document.getElementById("plantilla-tarea"); if(pt) pt.innerHTML=opts;
+  const fct = document.getElementById("filtro-ct"); if(fct){ const v=fct.value; fct.innerHTML=`<option value="">Todas las tareas</option>`+opts; fct.value=v; }
+  const mct = document.getElementById("modal-cap-tarea"); if(mct) mct.innerHTML=opts;
+}
+
+// ── PLANTILLA ──
+function renderTablaPlantilla(){
+  const fDia = document.getElementById("filtro-plantilla-dia")?.value||"";
+  const fTarea = document.getElementById("filtro-plantilla-tarea")?.value||"";
+  const items = BD.plantilla.filter(p=>(!fDia||p.Dia===fDia)&&(!fTarea||p.TareaID===fTarea))
+    .sort((a,b)=>{
+      const dias=["Lunes","Martes","Miércoles","Jueves","Viernes"];
+      const dA=dias.indexOf(a.Dia), dB=dias.indexOf(b.Dia);
+      if(dA!==dB) return dA-dB;
+      return getOrden(a.FranjaID)-getOrden(b.FranjaID);
+    });
+  const tb = document.getElementById("tbody-plantilla");
+  if(!items.length){ tb.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Sin entradas</td></tr>`; return; }
+  tb.innerHTML = items.map(p=>{
+    const t = BD.tareas.find(t=>t.TareaID===p.TareaID);
+    const f = BD.franjas.find(f=>f.FranjaID===p.FranjaID);
+    const activaStyle = p.Activa?"background:var(--success-light);color:#155724":"background:var(--surface2);color:var(--text-muted)";
+    return `<tr>
+      <td style="font-weight:500">${p.Dia}</td>
+      <td><span style="font-size:11px;font-weight:700;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 7px">${p.FranjaID}</span></td>
+      <td style="font-size:12px;color:var(--text-muted)">${f?.HoraInicio||''} – ${f?.HoraFin||''}</td>
+      <td>${t?.Icono||''} <span style="font-weight:500">${t?.Nombre||p.TareaID}</span></td>
+      <td style="text-align:center;font-weight:600">${p.PersonasNecesarias}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:99px;cursor:pointer;${activaStyle}" onclick="togglePlantillaActiva('${p.PlantillaID}')">${p.Activa?'Sí':'No'}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" onclick="abrirModalPlantilla('${p.PlantillaID}')" style="margin-right:4px"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="eliminarPlantilla('${p.PlantillaID}')"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function abrirModalPlantilla(plantillaID){
+  plantillaEditID = plantillaID || null;
+  const p = plantillaID ? BD.plantilla.find(p=>p.PlantillaID===plantillaID) : null;
+  document.getElementById("modal-plantilla-titulo").textContent = p ? "Editar entrada" : "Nueva entrada en plantilla";
+  // Rellenar franjas
+  const selF = document.getElementById("plantilla-franja");
+  selF.innerHTML = BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden).map(f=>`<option value="${f.FranjaID}">${f.FranjaID} (${f.HoraInicio}–${f.HoraFin})</option>`).join("");
+  // Rellenar tareas
+  const selT = document.getElementById("plantilla-tarea");
+  selT.innerHTML = BD.tareas.map(t=>`<option value="${t.TareaID}">${t.Icono||''} ${t.Nombre}</option>`).join("");
+  if(p){
+    document.getElementById("plantilla-dia").value = p.Dia;
+    selF.value = p.FranjaID;
+    selT.value = p.TareaID;
+    document.getElementById("plantilla-necesarias").value = p.PersonasNecesarias;
+    document.getElementById("plantilla-activa").value = String(p.Activa);
+  } else {
+    document.getElementById("plantilla-dia").value = "";
+    document.getElementById("plantilla-necesarias").value = 1;
+    document.getElementById("plantilla-activa").value = "true";
+  }
+  document.getElementById("plantilla-err").textContent = "";
+  document.getElementById("modal-plantilla").style.display = "flex";
+}
+
+function guardarPlantilla(){
+  const dia = document.getElementById("plantilla-dia").value;
+  const franjaID = document.getElementById("plantilla-franja").value;
+  const tareaID = document.getElementById("plantilla-tarea").value;
+  const necesarias = Number(document.getElementById("plantilla-necesarias").value)||1;
+  const activa = document.getElementById("plantilla-activa").value === "true";
+  const err = document.getElementById("plantilla-err");
+  if(!dia){ err.textContent="Selecciona un día"; return; }
+  if(!franjaID){ err.textContent="Selecciona una franja"; return; }
+  if(!tareaID){ err.textContent="Selecciona una tarea"; return; }
+  if(plantillaEditID){
+    const p = BD.plantilla.find(p=>p.PlantillaID===plantillaEditID);
+    if(p){ p.Dia=dia; p.FranjaID=franjaID; p.TareaID=tareaID; p.PersonasNecesarias=necesarias; p.Activa=activa; }
+  } else {
+    BD.plantilla.push({PlantillaID:uid(), Dia:dia, FranjaID:franjaID, TareaID:tareaID, PersonasNecesarias:necesarias, Activa:activa});
+  }
+  document.getElementById("modal-plantilla").style.display="none";
+  renderTablaPlantilla();
+}
+
+function togglePlantillaActiva(plantillaID){
+  const p = BD.plantilla.find(p=>p.PlantillaID===plantillaID);
+  if(p){ p.Activa=!p.Activa; renderTablaPlantilla(); }
+}
+
+function eliminarPlantilla(plantillaID){
+  if(!confirm("¿Eliminar esta entrada de la plantilla?")) return;
+  BD.plantilla = BD.plantilla.filter(p=>p.PlantillaID!==plantillaID);
+  renderTablaPlantilla();
+}
+
+// ══════════════════════════════════════════════
 // NAVEGACIÓN
 // ══════════════════════════════════════════════
 function navTo(page){
@@ -1043,6 +1288,7 @@ function navTo(page){
   if(page==="disponibilidad") renderDisponibilidad();
   if(page==="personas"){ renderTablaPersonas(); renderStatsPersonas(); }
   if(page==="capacidades") renderTablaCapacidades();
+  if(page==="tareas"){ renderTablaTareas(); renderTablaPlantilla(); actualizarSelectsTareas(); }
 }
 
 // ══════════════════════════════════════════════
