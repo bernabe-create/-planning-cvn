@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planificador — Centro Vida Nueva</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
 :root {
@@ -190,11 +191,44 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .banner-text{font-size:13px;color:var(--accent-text);line-height:1.5}
 .banner-text strong{display:block;margin-bottom:2px}
 
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:0}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;width:360px;max-width:92vw;box-shadow:var(--shadow-md);text-align:center}
+.login-logo{width:56px;height:56px;border-radius:50%;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
+.login-title{font-size:20px;font-weight:600;letter-spacing:-0.02em;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--text-sec);margin-bottom:28px}
+.login-err{font-size:12px;color:var(--danger);margin-top:12px;min-height:16px}
+.login-footer{font-size:11px;color:var(--text-muted);margin-top:16px}
+
 @media(max-width:700px){
   .app{grid-template-columns:1fr}
-  .sidebar{position:fixed;left:-220px;height:100vh;z-index:100;transition:left 0.2s}
+  .sidebar{position:fixed;left:-240px;height:100vh;z-index:200;transition:left 0.25s;width:240px;box-shadow:4px 0 20px rgba(0,0,0,0.12)}
   .sidebar.open{left:0}
+  .main{padding:14px;padding-top:56px}
+  .hamburger{display:flex}
+  .modal{width:96vw!important;max-height:94vh}
+  .modal-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .modal-tab{white-space:nowrap;padding:7px 10px;font-size:12px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .tbl-wrap{overflow-x:auto}
+  .tbl{min-width:500px}
+  .dia-tabs{gap:4px}
+  .dia-tab{padding:5px 10px;font-size:12px}
+  .franja-block{padding:10px}
+  .tareas-grid{grid-template-columns:1fr!important}
+  .card{padding:12px}
+  .page-title{font-size:16px}
+  .btn{padding:8px 14px;min-height:36px}
+  .btn-sm{min-height:32px;padding:5px 10px}
+  .overlay{display:block}
+  #disp-tabla{overflow-x:auto}
 }
+@media(min-width:701px){
+  .hamburger{display:none}
+  .overlay{display:none!important}
+}
+.hamburger{position:fixed;top:10px;left:10px;z-index:300;width:40px;height:40px;border-radius:var(--radius);background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:18px;align-items:center;justify-content:center;box-shadow:var(--shadow-md)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:150;display:none}
 </style>
 </head>
 <body>
@@ -314,6 +348,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <div class="modal-tabs">
         <button class="modal-tab active" onclick="switchTab('datos')" id="tab-datos">Datos básicos</button>
         <button class="modal-tab" onclick="switchTab('capacidades')" id="tab-capacidades">Capacidades</button>
+        <button class="modal-tab" onclick="switchTab('disponibilidad')" id="tab-disponibilidad">Disponibilidad</button>
+        <button class="modal-tab" onclick="switchTab('documento')" id="tab-documento" id="tab-doc">Documento</button>
       </div>
     </div>
     <div class="modal-body">
@@ -323,7 +359,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
           <div class="field"><label>Grupo *</label><select id="modal-grupo"><option value="">Seleccionar...</option><option>Chicos</option><option>Chicas</option><option>Madres</option><option>Voluntarios</option></select></div>
           <div class="field"><label>Estado</label><select id="modal-activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
         </div>
-        <div class="field"><label>Tipo de voluntario</label>
+        <div id="campo-tipo-voluntario" style="display:none" class="field"><label>Tipo de voluntario</label>
           <select id="modal-tipo-voluntario" style="width:100%">
             <option value="">— Sin asignar —</option>
             <option>Tipo A</option>
@@ -347,6 +383,35 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
               <button class="btn btn-primary btn-sm" onclick="añadirCapModal()">+ Añadir</button>
             </div>
             <div id="modal-cap-msg" style="font-size:12px;margin-top:6px;min-height:16px"></div>
+          </div>
+        </div>
+      </div>
+      <!-- PANEL DISPONIBILIDAD -->
+      <div class="modal-panel" id="panel-disponibilidad">
+        <div style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.04em">Disponibilidad semanal</div>
+        <div id="modal-disp-grid"></div>
+      </div>
+      <!-- PANEL DOCUMENTO -->
+      <div class="modal-panel" id="panel-documento">
+        <div id="panel-doc-no-voluntario" style="display:none" class="alert alert-warn">⚠️ El documento solo aplica a voluntarios.</div>
+        <div id="panel-doc-contenido">
+          <div id="modal-doc-ya-firmado-inline" style="display:none" class="alert alert-ok" style="margin-bottom:10px">
+            ✓ Firmado el <strong id="modal-doc-fecha-inline"></strong>
+          </div>
+          <div id="modal-doc-firma-inline">
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;max-height:180px;overflow-y:auto;font-size:12px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap" id="modal-doc-preview"></div>
+            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:10px">
+              <input type="checkbox" id="doc-check-inline" style="width:16px;height:16px;margin-top:2px" onchange="toggleFirmaInline()">
+              <span style="font-size:12px">He leído y acepto los términos de este documento como voluntario de Centro Vida Nueva.</span>
+            </label>
+            <div style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:6px">Firma</div>
+            <canvas id="firma-canvas" width="420" height="120"
+              style="border:1px solid var(--border-strong);border-radius:var(--radius);cursor:crosshair;background:#fff;display:block;touch-action:none"></canvas>
+            <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+              <button class="btn btn-sm" onclick="limpiarFirma()">↺ Limpiar firma</button>
+              <span id="firma-aviso" style="font-size:11px;color:var(--text-muted)">Dibuja tu firma arriba</span>
+              <button class="btn btn-primary btn-sm" id="btn-firmar-inline" onclick="firmarInline()" disabled style="margin-left:auto;opacity:0.5">✓ Firmar documento</button>
+            </div>
           </div>
         </div>
       </div>
@@ -374,12 +439,42 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   </div>
 </div>
 
+<!-- PANTALLA DE LOGIN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <img src="https://static.wixstatic.com/media/157c98_8f5b519b702b4a2c88c286d9d435be8c~mv2.png"
+      alt="Centro Vida Nueva" style="width:180px;margin:0 auto 20px;display:block;object-fit:contain">
+    <div class="login-title">Planificador semanal</div>
+    <div class="login-sub">Centro Vida Nueva — Acceso restringido</div>
+    <div id="g_id_onload"
+      data-client_id="826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com"
+      data-callback="handleGoogleLogin"
+      data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-size="large"
+      data-theme="outline"
+      data-text="sign_in_with"
+      data-shape="rectangular"
+      data-logo_alignment="left"
+      data-width="280">
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-footer">Solo cuentas @centrovidanueva.org.es</div>
+  </div>
+</div>
+
+<button class="hamburger" onclick="toggleSidebar()" aria-label="Menú">☰</button>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
 <div class="app">
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="name"><span class="dot"></span>Centro Vida Nueva</div>
-      <div class="sub">Planificador semanal</div>
+      <img src="https://static.wixstatic.com/media/157c98_8f5b519b702b4a2c88c286d9d435be8c~mv2.png"
+        alt="Centro Vida Nueva" style="width:130px;display:block;margin-bottom:4px;object-fit:contain">
+      <div class="sub" style="margin-top:4px">Planificador semanal</div>
     </div>
     <div class="nav-section">Planificación</div>
     <button class="nav-btn active" onclick="navTo('planning')" id="nav-planning">📅 Planning</button>
@@ -1014,9 +1109,11 @@ function toggleActivo(pID){ const p=BD.personas.find(p=>p.PersonaID===pID); if(p
 
 // ── MODAL PERSONAS ──
 function switchTab(tab){
-  ["datos","capacidades"].forEach(t=>{
-    document.getElementById("tab-"+t).classList.toggle("active",t===tab);
-    document.getElementById("panel-"+t).classList.toggle("active",t===tab);
+  ["datos","capacidades","disponibilidad","documento"].forEach(t=>{
+    const tabEl = document.getElementById("tab-"+t);
+    const panelEl = document.getElementById("panel-"+t);
+    if(tabEl) tabEl.classList.toggle("active",t===tab);
+    if(panelEl) panelEl.classList.toggle("active",t===tab);
   });
   if(tab==="capacidades"){
     const esNueva=!modalEditID;
@@ -1024,6 +1121,12 @@ function switchTab(tab){
     document.getElementById("caps-modal-content").style.display=esNueva?"none":"block";
     if(!esNueva) renderCapsModal(modalEditID);
     document.getElementById("btn-guardar").style.display=esNueva?"flex":"none";
+  } else if(tab==="disponibilidad"){
+    document.getElementById("btn-guardar").style.display="none";
+    if(modalEditID) renderDispModal(modalEditID);
+  } else if(tab==="documento"){
+    document.getElementById("btn-guardar").style.display="none";
+    renderDocModal(modalEditID);
   } else {
     document.getElementById("btn-guardar").style.display="flex";
   }
@@ -1063,17 +1166,20 @@ function añadirCapModal(){
   if(BD.capacidades.some(c=>c.PersonaID===modalEditID&&c.TareaID===tID)){ msg.innerHTML=`<span style="color:var(--danger)">Ya existe</span>`; return; }
   BD.capacidades.push({id:uid(),PersonaID:modalEditID,TareaID:tID,Nivel:nivel});
   renderCapsModal(modalEditID); renderTablaPersonas(); renderTablaCapacidades();
+  syncSheets("guardarCapacidad",{capacidad:{PersonaID:modalEditID,TareaID:tID,Nivel:nivel}});
+  mostrarSyncStatus("Capacidad añadida");
   msg.innerHTML=`<span style="color:var(--success)">✓ Añadida</span>`;
   setTimeout(()=>msg.innerHTML="",2000);
 }
 
 function eliminarCapModal(id,pID){
-  // Buscar por c.id o c.CapacidadID (cuando viene de Sheets)
   BD.capacidades = BD.capacidades.filter(c => {
     const cid = c.id || c.CapacidadID || "";
     return String(cid) !== String(id);
   });
   renderCapsModal(pID); renderTablaPersonas(); renderTablaCapacidades();
+  syncSheets("eliminarCapacidad",{capacidadID:id});
+  mostrarSyncStatus("Capacidad eliminada");
 }
 
 function abrirModalNueva(){
@@ -1085,6 +1191,7 @@ function abrirModalNueva(){
   document.getElementById("modal-prioridad").value="0";
   document.getElementById("modal-tipo-voluntario").value="";
   document.getElementById("modal-err").textContent="";
+  actualizarCamposVoluntario("");
   switchTab("datos");
   document.getElementById("modal-persona").style.display="flex";
 }
@@ -1099,6 +1206,7 @@ function abrirModalEditar(pID){
   document.getElementById("modal-prioridad").value=p.Prioridad||0;
   document.getElementById("modal-tipo-voluntario").value=p.TipoVoluntario||"";
   document.getElementById("modal-err").textContent="";
+  actualizarCamposVoluntario(p.Grupo);
   switchTab("datos");
   document.getElementById("modal-persona").style.display="flex";
 }
@@ -1127,6 +1235,9 @@ function guardarPersona(){
   document.getElementById("modal-titulo").textContent=nombre;
   err.textContent="";
   renderTablaPersonas(); renderStatsPersonas(); actualizarSelects();
+  // Sync a Sheets
+  const pSync = BD.personas.find(p=>p.PersonaID===modalEditID);
+  if(pSync){ syncSheets("guardarPersona",{persona:pSync}); mostrarSyncStatus("Persona guardada"); }
   switchTab("capacidades");
 }
 
@@ -1139,6 +1250,7 @@ function abrirModalBorrar(pID){
 
 function confirmarBorrar(){
   if(!borrarID) return;
+  syncSheets("eliminarPersona",{personaID:borrarID});
   BD.personas=BD.personas.filter(p=>p.PersonaID!==borrarID);
   BD.capacidades=BD.capacidades.filter(c=>c.PersonaID!==borrarID);
   BD.excepciones=BD.excepciones.filter(e=>e.PersonaID!==borrarID);
@@ -1146,6 +1258,7 @@ function confirmarBorrar(){
   borrarID=null;
   document.getElementById("modal-borrar").style.display="none";
   renderTablaPersonas(); renderStatsPersonas(); actualizarSelects(); renderTablaCapacidades(); renderTablaExcepciones();
+  mostrarSyncStatus("Persona eliminada");
 }
 
 // ══════════════════════════════════════════════
@@ -1267,9 +1380,17 @@ function añadirExcepcion(){
   document.getElementById("exc-motivo").value="";
   excFranjasActivas=new Set(BD.franjas.map(f=>f.FranjaID));
   renderFranjasToggles(); renderTablaExcepciones();
+  const exc=BD.excepciones[BD.excepciones.length-1];
+  syncSheets("guardarExcepcion",{excepcion:exc});
+  mostrarSyncStatus("Excepción guardada");
 }
 
-function eliminarExcepcion(id){ BD.excepciones=BD.excepciones.filter(e=>e.id!==id); renderTablaExcepciones(); }
+function eliminarExcepcion(id){
+  syncSheets("eliminarExcepcion",{excepcionID:id});
+  BD.excepciones=BD.excepciones.filter(e=>e.id!==id);
+  renderTablaExcepciones();
+  mostrarSyncStatus("Excepción eliminada");
+}
 
 function renderTablaExcepciones(){
   const tb=document.getElementById("tbody-exc");
@@ -1686,6 +1807,175 @@ function firmarDocumento(){
 }
 
 // ══════════════════════════════════════════════
+// SYNC CON SHEETS
+// ══════════════════════════════════════════════
+async function syncSheets(action, data){
+  if(!SCRIPT_URL) return; // sin conexión, solo local
+  try {
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({action, ...data})
+    });
+  } catch(e){
+    console.warn("Sync Sheets error:", e.message);
+  }
+}
+
+function mostrarSyncStatus(msg, ok=true){
+  const el = document.getElementById("conexion-estado");
+  if(el){ el.textContent = (ok?"🟢 ":"🔴 ") + msg; setTimeout(()=>{ el.textContent = SCRIPT_URL?"🟢 Conectado a Sheets":"⚪ Sin conectar"; }, 3000); }
+}
+
+// ══════════════════════════════════════════════
+// CAMPOS CONDICIONALES VOLUNTARIO
+// ══════════════════════════════════════════════
+function actualizarCamposVoluntario(grupo){
+  const esVol = grupo === "Voluntarios";
+  document.getElementById("campo-tipo-voluntario").style.display = esVol ? "block" : "none";
+  const tabDoc = document.getElementById("tab-documento");
+  if(tabDoc) tabDoc.style.display = esVol ? "inline-flex" : "none";
+}
+
+// Escuchar cambio de grupo en el modal
+document.addEventListener("DOMContentLoaded", ()=>{
+  const selGrupo = document.getElementById("modal-grupo");
+  if(selGrupo) selGrupo.addEventListener("change", e=>actualizarCamposVoluntario(e.target.value));
+});
+
+// ══════════════════════════════════════════════
+// DISPONIBILIDAD EN MODAL
+// ══════════════════════════════════════════════
+function renderDispModal(pID){
+  const cont = document.getElementById("modal-disp-grid");
+  if(!cont || !pID) return;
+  const franjas = BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden);
+  let html = `<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;width:100%">`;
+  // Cabecera
+  html += `<thead><tr><td style="padding:4px 8px;font-size:11px;color:var(--text-muted)"></td>`;
+  franjas.forEach(f=>{ html+=`<th style="padding:4px 6px;text-align:center;font-size:10px;color:var(--text-muted);font-weight:600;min-width:52px">${f.HoraInicio}<br>${f.HoraFin}</th>`; });
+  html += `</tr></thead><tbody>`;
+  // Filas por día
+  DIAS.forEach((dia,di)=>{
+    const colors=["#F0F4FF","#F0FFF4","#FFFBF0","#FFF0F0","#F5F0FF"];
+    html+=`<tr style="background:${colors[di]}"><td style="padding:5px 8px;font-size:12px;font-weight:600;white-space:nowrap;color:var(--text-sec)">${dia}</td>`;
+    franjas.forEach(f=>{
+      const on = BD.disponibilidad[pID]?.[dia]?.[f.FranjaID]===true;
+      html+=`<td style="padding:3px;text-align:center">
+        <div class="disp-cell ${on?'on':'off'}" onclick="toggleDispModal('${pID}','${dia}','${f.FranjaID}',this)">${on?'✓':'·'}</div>
+      </td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  cont.innerHTML=html;
+}
+
+function toggleDispModal(pID, dia, fID, el){
+  const actual = BD.disponibilidad[pID]?.[dia]?.[fID]===true;
+  BD.disponibilidad[pID][dia][fID] = !actual;
+  el.classList.toggle("on",!actual); el.classList.toggle("off",actual); el.textContent=!actual?'✓':'·';
+  // Sync a Sheets
+  const registro = {PersonaID: pID, "Dia semana": dia};
+  BD.franjas.forEach(f=>{ registro[f.FranjaID] = BD.disponibilidad[pID][dia][f.FranjaID]===true; });
+  syncSheets("guardarDisponibilidad", {disponibilidad:[registro]});
+  // También actualizar la vista global si está abierta
+  if(document.getElementById("page-disponibilidad").classList.contains("active")) renderDisponibilidad();
+}
+
+// ══════════════════════════════════════════════
+// FIRMA CON CANVAS
+// ══════════════════════════════════════════════
+let firmaCanvas=null, firmaCtx=null, firmaDibujando=false, firmaVacia=true;
+
+function initFirmaCanvas(){
+  firmaCanvas = document.getElementById("firma-canvas");
+  if(!firmaCanvas) return;
+  firmaCtx = firmaCanvas.getContext("2d");
+  firmaCtx.strokeStyle="#1a1917"; firmaCtx.lineWidth=2.5; firmaCtx.lineCap="round"; firmaCtx.lineJoin="round";
+  // Mouse
+  firmaCanvas.addEventListener("mousedown", e=>{ firmaDibujando=true; const r=firmaCanvas.getBoundingClientRect(); firmaCtx.beginPath(); firmaCtx.moveTo(e.clientX-r.left,e.clientY-r.top); });
+  firmaCanvas.addEventListener("mousemove", e=>{ if(!firmaDibujando) return; const r=firmaCanvas.getBoundingClientRect(); firmaCtx.lineTo(e.clientX-r.left,e.clientY-r.top); firmaCtx.stroke(); firmaVacia=false; actualizarBtnFirmar(); });
+  firmaCanvas.addEventListener("mouseup", ()=>firmaDibujando=false);
+  firmaCanvas.addEventListener("mouseleave", ()=>firmaDibujando=false);
+  // Touch
+  firmaCanvas.addEventListener("touchstart", e=>{ e.preventDefault(); firmaDibujando=true; const r=firmaCanvas.getBoundingClientRect(),t=e.touches[0]; firmaCtx.beginPath(); firmaCtx.moveTo(t.clientX-r.left,t.clientY-r.top); });
+  firmaCanvas.addEventListener("touchmove", e=>{ e.preventDefault(); if(!firmaDibujando) return; const r=firmaCanvas.getBoundingClientRect(),t=e.touches[0]; firmaCtx.lineTo(t.clientX-r.left,t.clientY-r.top); firmaCtx.stroke(); firmaVacia=false; actualizarBtnFirmar(); });
+  firmaCanvas.addEventListener("touchend", ()=>firmaDibujando=false);
+}
+
+function limpiarFirma(){
+  if(!firmaCtx||!firmaCanvas) return;
+  firmaCtx.clearRect(0,0,firmaCanvas.width,firmaCanvas.height);
+  firmaVacia=true; actualizarBtnFirmar();
+}
+
+function actualizarBtnFirmar(){
+  const chk = document.getElementById("doc-check-inline");
+  const btn = document.getElementById("btn-firmar-inline");
+  if(!btn||!chk) return;
+  const ok = chk.checked && !firmaVacia;
+  btn.disabled=!ok; btn.style.opacity=ok?"1":"0.5";
+}
+
+function toggleFirmaInline(){ actualizarBtnFirmar(); }
+
+function firmarInline(){
+  if(!modalEditID) return;
+  const p = BD.personas.find(p=>p.PersonaID===modalEditID);
+  if(!p) return;
+  const hoy = new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const firmaImg = firmaCanvas ? firmaCanvas.toDataURL("image/png") : "";
+  p.FechaFirmaDoc = hoy;
+  p.FirmaImg = firmaImg;
+  document.getElementById("modal-doc-ya-firmado-inline").style.display="block";
+  document.getElementById("modal-doc-fecha-inline").textContent=hoy;
+  document.getElementById("modal-doc-firma-inline").style.display="none";
+  renderTablaPersonas();
+  syncSheets("guardarPersona", {persona: p});
+  mostrarSyncStatus("Firma guardada");
+}
+
+function renderDocModal(pID){
+  if(!pID){
+    document.getElementById("panel-doc-no-voluntario").style.display="block";
+    document.getElementById("panel-doc-contenido").style.display="none";
+    return;
+  }
+  const p = BD.personas.find(p=>p.PersonaID===pID);
+  const esVol = p?.Grupo==="Voluntarios";
+  document.getElementById("panel-doc-no-voluntario").style.display=esVol?"none":"block";
+  document.getElementById("panel-doc-contenido").style.display=esVol?"block":"none";
+  if(!esVol) return;
+  document.getElementById("modal-doc-preview").textContent=getTextoDoc();
+  if(p?.FechaFirmaDoc){
+    document.getElementById("modal-doc-ya-firmado-inline").style.display="block";
+    document.getElementById("modal-doc-fecha-inline").textContent=p.FechaFirmaDoc;
+    document.getElementById("modal-doc-firma-inline").style.display="none";
+  } else {
+    document.getElementById("modal-doc-ya-firmado-inline").style.display="none";
+    document.getElementById("modal-doc-firma-inline").style.display="block";
+    document.getElementById("doc-check-inline").checked=false;
+    firmaVacia=true;
+    setTimeout(()=>{ initFirmaCanvas(); limpiarFirma(); },50);
+  }
+}
+
+// ══════════════════════════════════════════════
+// SIDEBAR MÓVIL
+// ══════════════════════════════════════════════
+function toggleSidebar(){
+  const sb = document.getElementById("sidebar");
+  const ov = document.getElementById("overlay");
+  sb.classList.toggle("open");
+  ov.style.display = sb.classList.contains("open") ? "block" : "none";
+}
+function closeSidebar(){
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("overlay").style.display = "none";
+}
+
+// ══════════════════════════════════════════════
 // NAVEGACIÓN
 // ══════════════════════════════════════════════
 function navTo(page){
@@ -1698,21 +1988,101 @@ function navTo(page){
   if(page==="capacidades") renderTablaCapacidades();
   if(page==="tareas"){ renderTablaTareas(); renderTablaPlantilla(); actualizarSelectsTareas(); }
   if(page==="config"){ document.getElementById("config-doc-texto").value = getTextoDoc(); }
+  closeSidebar(); // cerrar sidebar en móvil al navegar
+}
+
+// ══════════════════════════════════════════════
+// GOOGLE LOGIN
+// ══════════════════════════════════════════════
+const DOMINIO_PERMITIDO = "centrovidanueva.org.es";
+const CLIENT_ID = "826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com";
+let usuarioActual = null;
+
+function parseJwt(token){
+  try {
+    const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return JSON.parse(atob(base64));
+  } catch(e){ return null; }
+}
+
+function handleGoogleLogin(response){
+  const payload = parseJwt(response.credential);
+  if(!payload){ mostrarErrorLogin("Error al verificar el token."); return; }
+  const email = payload.email || "";
+  const dominio = email.split("@")[1] || "";
+  if(dominio !== DOMINIO_PERMITIDO){
+    mostrarErrorLogin(`Acceso denegado. Solo cuentas @${DOMINIO_PERMITIDO}`);
+    return;
+  }
+  usuarioActual = {
+    email: payload.email,
+    nombre: payload.name,
+    foto: payload.picture
+  };
+  // Guardar sesión en sessionStorage (dura mientras está el navegador abierto)
+  sessionStorage.setItem("cvn_user", JSON.stringify(usuarioActual));
+  entrarApp();
+}
+
+function mostrarErrorLogin(msg){
+  document.getElementById("login-err").textContent = msg;
+}
+
+function entrarApp(){
+  document.getElementById("login-screen").style.display = "none";
+  // Mostrar info del usuario en el sidebar
+  const footer = document.getElementById("conexion-estado");
+  if(footer && usuarioActual){
+    footer.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <img src="${usuarioActual.foto}" style="width:22px;height:22px;border-radius:50%" onerror="this.style.display='none'">
+      <span style="font-size:11px;font-weight:500;color:var(--text-sec)">${usuarioActual.nombre}</span>
+    </div>
+    <div style="font-size:10px;color:var(--text-muted)">${usuarioActual.email}</div>
+    <button onclick="cerrarSesion()" style="margin-top:6px;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border-strong);background:transparent;cursor:pointer;color:var(--text-muted)">Cerrar sesión</button>`;
+  }
+  // Cargar datos
+  if(SCRIPT_URL){
+    document.getElementById("config-url").value=SCRIPT_URL;
+    cargarDatosDesdeSheets().then(ok=>{
+      if(ok) mostrarSyncStatus("Conectado a Sheets");
+      else usarDatosDemo();
+    });
+  } else {
+    usarDatosDemo();
+  }
+}
+
+function cerrarSesion(){
+  sessionStorage.removeItem("cvn_user");
+  usuarioActual = null;
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("login-err").textContent = "";
+  // Reiniciar Google Sign-In
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleGoogleLogin
+  });
+  google.accounts.id.renderButton(
+    document.querySelector(".g_id_signin"),
+    {theme:"outline", size:"large", width:"280"}
+  );
 }
 
 // ══════════════════════════════════════════════
 // INICIO
 // ══════════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", ()=>{
-  if(SCRIPT_URL){
-    document.getElementById("config-url").value=SCRIPT_URL;
-    cargarDatosDesdeSheets().then(ok=>{
-      if(ok) document.getElementById("conexion-estado").textContent="🟢 Conectado a Sheets";
-      else usarDatosDemo();
-    });
-  } else {
-    usarDatosDemo();
+  // Comprobar sesión guardada
+  const sesionGuardada = sessionStorage.getItem("cvn_user");
+  if(sesionGuardada){
+    try {
+      usuarioActual = JSON.parse(sesionGuardada);
+      entrarApp();
+      return;
+    } catch(e){ sessionStorage.removeItem("cvn_user"); }
   }
+  // Mostrar pantalla de login (Google la renderiza automáticamente)
+  document.getElementById("login-screen").style.display = "flex";
 });
 </script>
 </body>
