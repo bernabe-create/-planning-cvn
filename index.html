@@ -753,7 +753,7 @@ async function cargarDatosDesdeSheets(){
 function cargarBD(data){
   BD.personas = data.personas || [];
   BD.tareas = data.tareas || [];
-  // Normalizar franjas: acepta "Hora inicio", HoraInicio, o ISO date string
+  // Normalizar franjas
   BD.franjas = (data.franjas || []).map(f=>{
     const hi = f.HoraInicio || f["Hora inicio"] || f["hora inicio"] || "";
     const hf = f.HoraFin || f["Hora fin"] || f["hora fin"] || "";
@@ -764,6 +764,24 @@ function cargarBD(data){
       Orden: Number(f.Orden||0)
     };
   }).sort((a,b)=>a.Orden-b.Orden);
+
+  // Corregir horas hardcoded — el Sheet tiene offset de zona horaria
+  // que no se puede resolver desde Apps Script. Las franjas no cambian.
+  const HORAS_CORRECTAS = {
+    "F1": {HoraInicio:"08:30", HoraFin:"09:30"},
+    "F2": {HoraInicio:"09:30", HoraFin:"10:30"},
+    "F3": {HoraInicio:"11:00", HoraFin:"12:00"},
+    "F4": {HoraInicio:"12:00", HoraFin:"13:00"},
+    "F5": {HoraInicio:"13:00", HoraFin:"14:00"},
+    "F6": {HoraInicio:"16:00", HoraFin:"17:00"},
+    "F7": {HoraInicio:"17:00", HoraFin:"18:00"},
+    "F8": {HoraInicio:"18:00", HoraFin:"19:00"}
+  };
+  BD.franjas = BD.franjas.map(f=>{
+    const correctas = HORAS_CORRECTAS[f.FranjaID];
+    if(correctas) return {...f, ...correctas};
+    return f;
+  });
   BD.capacidades = (data.capacidades || []).map(c=>({
     ...c,
     id: c.id || c.CapacidadID || uid()
