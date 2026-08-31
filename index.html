@@ -442,8 +442,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <!-- PANTALLA DE LOGIN -->
 <div id="login-screen" class="login-screen">
   <div class="login-card">
-    <img src="https://static.wixstatic.com/media/157c98_8f5b519b702b4a2c88c286d9d435be8c~mv2.png"
-      alt="Centro Vida Nueva" style="width:180px;margin:0 auto 20px;display:block;object-fit:contain">
+    <img src="logo.png"
+      alt="Vida Nueva" style="width:160px;margin:0 auto 20px;display:block;object-fit:contain">
     <div class="login-title">Planificador semanal</div>
     <div class="login-sub">Centro Vida Nueva — Acceso restringido</div>
     <div id="g_id_onload"
@@ -472,9 +472,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <img src="https://static.wixstatic.com/media/157c98_8f5b519b702b4a2c88c286d9d435be8c~mv2.png"
-        alt="Centro Vida Nueva" style="width:130px;display:block;margin-bottom:4px;object-fit:contain">
-      <div class="sub" style="margin-top:4px">Planificador semanal</div>
+      <img src="logo.png"
+        alt="Vida Nueva" style="width:110px;display:block;margin-bottom:4px;object-fit:contain">
+      <div class="sub" style="margin-top:2px">Planificador semanal</div>
     </div>
     <div class="nav-section">Planificación</div>
     <button class="nav-btn active" onclick="navTo('planning')" id="nav-planning">📅 Planning</button>
@@ -1810,13 +1810,18 @@ function firmarDocumento(){
 // SYNC CON SHEETS
 // ══════════════════════════════════════════════
 async function syncSheets(action, data){
-  if(!SCRIPT_URL) return; // sin conexión, solo local
+  if(!SCRIPT_URL) return;
   try {
-    await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({action, ...data})
+    // Usamos GET con datos codificados para evitar problemas CORS
+    // Apps Script no permite POST cross-origin desde GitHub Pages
+    const params = new URLSearchParams({
+      action,
+      data: JSON.stringify(data)
     });
+    const resp = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const result = await resp.json();
+    if(result.error) console.warn("Sheets sync error:", result.error);
+    return result;
   } catch(e){
     console.warn("Sync Sheets error:", e.message);
   }
