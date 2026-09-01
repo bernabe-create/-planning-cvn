@@ -672,9 +672,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
           <label>URL del Apps Script (Web App)</label>
           <input type="text" id="config-url" placeholder="https://script.google.com/macros/s/XXXXXX/exec" style="font-family:var(--font-mono);font-size:12px">
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="guardarConfig()">🔌 Conectar y cargar datos</button>
           <button class="btn" onclick="usarDatosDemo()">🧪 Usar datos de demo</button>
+          <button class="btn" onclick="testSync()" style="background:var(--warn-light);color:var(--warn);border-color:#fde68a">🔍 Test escritura</button>
           <span id="config-msg" style="font-size:12px"></span>
         </div>
       </div>
@@ -1812,18 +1813,49 @@ function firmarDocumento(){
 async function syncSheets(action, data){
   if(!SCRIPT_URL) return;
   try {
-    // Usamos GET con datos codificados para evitar problemas CORS
-    // Apps Script no permite POST cross-origin desde GitHub Pages
     const params = new URLSearchParams({
       action,
       data: JSON.stringify(data)
     });
-    const resp = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const url = `${SCRIPT_URL}?${params.toString()}`;
+    const resp = await fetch(url);
+    if(!resp.ok){ console.warn("Sync HTTP error:", resp.status); return; }
     const result = await resp.json();
     if(result.error) console.warn("Sheets sync error:", result.error);
     return result;
   } catch(e){
     console.warn("Sync Sheets error:", e.message);
+  }
+}
+
+async function testSync(){
+  const msg = document.getElementById("config-msg");
+  if(!SCRIPT_URL){ msg.innerHTML=`<span style="color:var(--danger)">❌ No hay URL configurada</span>`; return; }
+  msg.innerHTML=`<span style="color:var(--text-muted)">Probando escritura...</span>`;
+  try {
+    // Test 1: lectura
+    const r1 = await fetch(SCRIPT_URL + "?action=getDatos");
+    const d1 = await r1.json();
+    if(d1.error){ msg.innerHTML=`<span style="color:var(--danger)">❌ Error lectura: ${d1.error}</span>`; return; }
+
+    // Test 2: escritura con persona de prueba
+    const personaPrueba = d1.personas?.[0];
+    if(!personaPrueba){ msg.innerHTML=`<span style="color:var(--danger)">❌ No hay personas para probar</span>`; return; }
+
+    const params = new URLSearchParams({
+      action: "guardarPersona",
+      data: JSON.stringify({persona: personaPrueba})
+    });
+    const r2 = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const d2 = await r2.json();
+
+    if(d2.ok){
+      msg.innerHTML=`<span style="color:var(--success)">✓ Escritura funciona correctamente</span>`;
+    } else {
+      msg.innerHTML=`<span style="color:var(--danger)">❌ Error escritura: ${d2.error||'respuesta inesperada'}</span>`;
+    }
+  } catch(e){
+    msg.innerHTML=`<span style="color:var(--danger)">❌ Error de red: ${e.message}</span>`;
   }
 }
 
