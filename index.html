@@ -507,6 +507,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
           <input type="date" id="fecha-planning" style="width:auto"></div>
           <button class="btn btn-primary" onclick="generarPlanning()">▶ Generar planning</button>
           <button class="btn" onclick="generarPlanning()">↻ Regenerar</button>
+          <button class="btn" id="btn-guardar-planning" onclick="guardarPlanningSheets()" style="display:none;background:var(--success-light);color:#155724;border-color:#b8dfc8">💾 Guardar en Sheets</button>
+          <span id="planning-save-msg" style="font-size:12px"></span>
         </div>
       </div>
       <div class="dia-tabs" id="dia-tabs"></div>
@@ -710,7 +712,7 @@ const DIAS_SHORT = ["L","M","X","J","V"];
 const GRUPO_CLASS = {"Chicos":"chicos","Chicas":"chicas","Madres":"madres","Voluntarios":"vol"};
 const TAREA_TAG = {"Formación Taller":"ft","Formación Externa":"fe","Cocina":"co","Mantenimiento":"ma","Recepción Alimentos":"ra","Viajes":"vi","Limpiezas":"li","Limpieza Cocina":"lc"};
 
-let SCRIPT_URL = localStorage.getItem("cvn_script_url") || "";
+let SCRIPT_URL = localStorage.getItem("cvn_script_url") || "https://script.google.com/macros/s/AKfycbyibyqHBoDQKNa_YqZShGs6YwBUkKJJtB31KNFjAzKWHdqseGg9VPX69qdwUYwgGSaJ/exec";
 let BD = {personas:[],tareas:[],franjas:[],capacidades:[],plantilla:[],reglas:[],disponibilidad:{},excepciones:[]};
 let planningResultado = {}, planningAyer = {}, diaActivo = "Lunes";
 let modalEditID = null, borrarID = null;
@@ -961,9 +963,74 @@ function generarPlanning(){
     planningAyer=construirHistorial(planningResultado[dia]);
   });
   renderDiaTabs(); renderPlanning();
+  // Mostrar botón de guardar
+  document.getElementById("btn-guardar-planning").style.display="inline-flex";
+  document.getElementById("planning-save-msg").textContent="";
 }
 
-function construirHistorial(r){
+async function guardarPlanningSheets(){
+  if(!SCRIPT_URL){
+    document.getElementById("planning-save-msg").innerHTML=`<span style="color:var(--danger)">❌ Sin conexión a Sheets</span>`;
+    return;
+  }
+  const msg = document.getElementById("planning-save-msg");
+  const btn = document.getElementById("btn-guardar-planning");
+  msg.innerHTML=`<span style="color:var(--text-muted)">Guardando...</span>`;
+  btn.disabled=true;
+
+  const fechaBase = new Date(document.getElementById("fecha-planning").value);
+
+  // Construir filas para la hoja Planning
+  const filas = [];
+  DIAS.forEach((dia,idx)=>{
+    const fecha = new Date(fechaBase); fecha.setDate(fechaBase.getDate()+idx);
+    const fechaStr = fecha.toISOString().split("T")[0];
+    const data = planningResultado[dia];
+    if(!data) return;
+    Object.values(data).forEach(slots=>{
+      slots.forEach(s=>{
+        s.asignados.forEach(p=>{
+          // Buscar PlantillaID correspondiente
+          const plantilla = BD.plantilla.find(pl=>
+            pl.Dia===dia && pl.FranjaID===s.fID && pl.TareaID===s.slot.TareaID
+          );
+          filas.push({
+            PlanningID: uid(),
+            Fecha: fechaStr,
+            Dia: dia,
+            FranjaID: s.fID,
+            TareaID: s.slot.TareaID,
+            PersonaID: p.PersonaID,
+            PlantillaID: plantilla?.PlantillaID || "",
+            Estado: "ASIGNADO",
+            "Generado automaticamente": true,
+            Confirmado: false,
+            Observaciones: ""
+          });
+        });
+      });
+    });
+  });
+
+  if(!filas.length){
+    msg.innerHTML=`<span style="color:var(--danger)">❌ Sin asignaciones para guardar</span>`;
+    btn.disabled=false;
+    return;
+  }
+
+  const resultado = await syncSheets("guardarPlanning", {
+    planning: filas,
+    fecha: fechaBase.toISOString().split("T")[0]
+  });
+
+  btn.disabled=false;
+  if(resultado?.ok){
+    msg.innerHTML=`<span style="color:var(--success)">✓ ${filas.length} asignaciones guardadas en Sheets</span>`;
+    setTimeout(()=>msg.innerHTML="", 4000);
+  } else {
+    msg.innerHTML=`<span style="color:var(--danger)">❌ Error: ${resultado?.error||"respuesta inesperada"}</span>`;
+  }
+}
   const h={};
   Object.values(r).forEach(slots=>slots.forEach(s=>s.asignados.forEach(p=>{ if(!h[p.PersonaID]) h[p.PersonaID]=new Set(); h[p.PersonaID].add(s.slot.TareaID); })));
   return h;
@@ -1331,6 +1398,11 @@ function toggleDisp(pID,dia,fID,el){
   const actual=BD.disponibilidad[pID]?.[dia]?.[fID]===true;
   BD.disponibilidad[pID][dia][fID]=!actual;
   el.classList.toggle("on",!actual); el.classList.toggle("off",actual); el.textContent=!actual?'✓':'·';
+  const registro={"PersonaID":pID,"Dia semana":dia};
+  BD.franjas.forEach(f=>{ registro[f.FranjaID]=BD.disponibilidad[pID][dia][f.FranjaID]===true; });
+  syncSheets("guardarDisponibilidad",{disponibilidad:[registro]}).then(r=>{
+    mostrarSyncStatus(r?.ok?"Disponibilidad guardada":"Error al guardar",r?.ok!==false);
+  });
 }
 
 function marcarTodos(val){
@@ -1912,11 +1984,11 @@ function toggleDispModal(pID, dia, fID, el){
   const actual = BD.disponibilidad[pID]?.[dia]?.[fID]===true;
   BD.disponibilidad[pID][dia][fID] = !actual;
   el.classList.toggle("on",!actual); el.classList.toggle("off",actual); el.textContent=!actual?'✓':'·';
-  // Sync a Sheets
-  const registro = {PersonaID: pID, "Dia semana": dia};
+  const registro = {"PersonaID": pID, "Dia semana": dia};
   BD.franjas.forEach(f=>{ registro[f.FranjaID] = BD.disponibilidad[pID][dia][f.FranjaID]===true; });
-  syncSheets("guardarDisponibilidad", {disponibilidad:[registro]});
-  // También actualizar la vista global si está abierta
+  syncSheets("guardarDisponibilidad", {disponibilidad:[registro]}).then(r=>{
+    mostrarSyncStatus(r?.ok?"Disponibilidad guardada":"Error al guardar", r?.ok!==false);
+  });
   if(document.getElementById("page-disponibilidad").classList.contains("active")) renderDisponibilidad();
 }
 
@@ -2067,6 +2139,8 @@ function mostrarErrorLogin(msg){
 
 function entrarApp(){
   document.getElementById("login-screen").style.display = "none";
+  // Guardar URL en localStorage para persistencia
+  localStorage.setItem("cvn_script_url", SCRIPT_URL);
   // Mostrar info del usuario en el sidebar
   const footer = document.getElementById("conexion-estado");
   if(footer && usuarioActual){
@@ -2077,16 +2151,12 @@ function entrarApp(){
     <div style="font-size:10px;color:var(--text-muted)">${usuarioActual.email}</div>
     <button onclick="cerrarSesion()" style="margin-top:6px;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border-strong);background:transparent;cursor:pointer;color:var(--text-muted)">Cerrar sesión</button>`;
   }
-  // Cargar datos
-  if(SCRIPT_URL){
-    document.getElementById("config-url").value=SCRIPT_URL;
-    cargarDatosDesdeSheets().then(ok=>{
-      if(ok) mostrarSyncStatus("Conectado a Sheets");
-      else usarDatosDemo();
-    });
-  } else {
-    usarDatosDemo();
-  }
+  // Conectar siempre con la URL fija
+  document.getElementById("config-url").value = SCRIPT_URL;
+  cargarDatosDesdeSheets().then(ok=>{
+    if(ok) mostrarSyncStatus("Conectado a Sheets");
+    else mostrarSyncStatus("Error al conectar. Revisa el Apps Script.", false);
+  });
 }
 
 function cerrarSesion(){
