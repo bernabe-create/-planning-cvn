@@ -1858,13 +1858,17 @@ function firmarDocumento(){
 // SYNC CON SHEETS
 // ══════════════════════════════════════════════
 async function syncSheets(action, data){
-  if(!SCRIPT_URL) return; // sin conexión, solo local
+  if(!SCRIPT_URL) return;
   try {
-    await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({action, ...data})
+    const params = new URLSearchParams({
+      action,
+      data: JSON.stringify(data)
     });
+    const resp = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    if(!resp.ok) return;
+    const result = await resp.json();
+    if(result.error) console.warn("Sheets sync error:", result.error);
+    return result;
   } catch(e){
     console.warn("Sync Sheets error:", e.message);
   }
@@ -2035,7 +2039,15 @@ function navTo(page){
   if(page==="personas"){ renderTablaPersonas(); renderStatsPersonas(); }
   if(page==="capacidades") renderTablaCapacidades();
   if(page==="tareas"){ renderTablaTareas(); renderTablaPlantilla(); actualizarSelectsTareas(); }
-  if(page==="config"){ document.getElementById("config-doc-texto").value = getTextoDoc(); }
+  if(page==="config"){
+    document.getElementById("config-doc-texto").value = getTextoDoc();
+    // Sincronizar URL y estado de conexión
+    const cfgUrl = document.getElementById("config-url");
+    if(cfgUrl) cfgUrl.value = SCRIPT_URL || "";
+    if(SCRIPT_URL){
+      document.getElementById("config-msg").innerHTML = `<span style="color:var(--success)">✓ Conectado a Sheets</span>`;
+    }
+  }
   closeSidebar(); // cerrar sidebar en móvil al navegar
 }
 
