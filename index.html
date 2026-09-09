@@ -2078,13 +2078,12 @@ function entrarApp(){
   if(cfgUrl) cfgUrl.value = SCRIPT_URL;
   cargarDatosDesdeSheets().then(ok=>{
     if(ok) mostrarSyncStatus("Conectado a Sheets");
-    else mostrarSyncStatus("Error al conectar", false);
+    else {
+      mostrarSyncStatus("Error al conectar", false);
+      usarDatosDemo();
+    }
   });
 }
 
 window.addEventListener("DOMContentLoaded", ()=>{
-  entrarApp();
-});
-</script>
-</body>
-</html>
+  entrar
