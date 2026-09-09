@@ -446,8 +446,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <div class="login-title">Planificador semanal</div>
     <div class="login-sub">Centro Vida Nueva</div>
     <div id="google-btn-container" style="display:flex;justify-content:center;margin:24px 0 4px"></div>
-    <button onclick="onGoogleLibLoad();google.accounts.id.prompt()" id="btn-google-fallback"
-      style="display:flex;align-items:center;justify-content:center;gap:10px;width:280px;margin:4px auto;padding:10px 16px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#3c4043">
+    <button onclick="loginConGoogle()" id="btn-google-fallback"
+      style="display:flex;align-items:center;justify-content:center;gap:10px;width:280px;margin:24px auto 4px;padding:10px 16px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#3c4043">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18">
       Continuar con Google
     </button>
@@ -2092,96 +2092,22 @@ function navTo(page){
 }
 
 // ══════════════════════════════════════════════
-// GOOGLE LOGIN
+// INICIO — Sin login (temporal)
 // ══════════════════════════════════════════════
-const EMAILS_PERMITIDOS = [
-  "berna.franco96@gmail.com",
-  "bernabe@centrovidanueva.org.es"
-];
-const DOMINIO_PERMITIDO = "centrovidanueva.org.es";
-const CLIENT_ID = "826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com";
-let usuarioActual = null;
-
-function parseJwt(token){
-  try {
-    const b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-    return JSON.parse(atob(b64));
-  } catch(e){ return null; }
-}
-
-function handleGoogleLogin(response){
-  const payload = parseJwt(response.credential);
-  if(!payload){ document.getElementById("login-err").textContent="Error al verificar. Intenta de nuevo."; return; }
-  const email = payload.email || "";
-  const dominio = email.split("@")[1] || "";
-  const ok = dominio===DOMINIO_PERMITIDO || EMAILS_PERMITIDOS.includes(email);
-  if(!ok){ document.getElementById("login-err").textContent="Acceso denegado para "+email; return; }
-  usuarioActual = {email:payload.email, nombre:payload.name, foto:payload.picture};
-  sessionStorage.setItem("cvn_user", JSON.stringify(usuarioActual));
-  entrarApp();
-}
-
-// Google llama a esta función cuando la librería carga (data-callback en el div)
-function onGoogleLibLoad(){
-  google.accounts.id.initialize({
-    client_id: CLIENT_ID,
-    callback: handleGoogleLogin,
-    auto_select: false,
-    cancel_on_tap_outside: false,
-    use_fedcm_for_prompt: false
-  });
-  google.accounts.id.renderButton(
-    document.getElementById("google-btn-container"),
-    {theme:"outline", size:"large", width:"280", text:"signin_with", locale:"es"}
-  );
-}
-
-function cerrarSesion(){
-  sessionStorage.removeItem("cvn_user");
-  usuarioActual = null;
-  document.getElementById("login-err").textContent="";
-  document.getElementById("login-screen").style.display="flex";
-}
+let usuarioActual = {nombre:"Usuario", email:""};
+function cerrarSesion(){}
 
 function entrarApp(){
-  try {
-    document.getElementById("login-screen").style.display="none";
-    localStorage.setItem("cvn_script_url", SCRIPT_URL);
-    const footer = document.getElementById("conexion-estado");
-    if(footer && usuarioActual){
-      footer.innerHTML=`<div style="font-size:11px;font-weight:500;color:var(--text-sec);margin-bottom:2px">${usuarioActual.nombre||usuarioActual.email}</div>
-      <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">${usuarioActual.email||''}</div>
-      <button onclick="cerrarSesion()" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border-strong);background:transparent;cursor:pointer;color:var(--text-muted)">Cerrar sesión</button>`;
-    }
-    const cfgUrl = document.getElementById("config-url");
-    if(cfgUrl) cfgUrl.value=SCRIPT_URL;
-    cargarDatosDesdeSheets().then(ok=>{
-      if(ok) mostrarSyncStatus("Conectado a Sheets");
-      else mostrarSyncStatus("Error al conectar", false);
-    });
-  } catch(err){
-    document.getElementById("login-screen").style.display="none";
-    console.error("entrarApp:", err);
-  }
+  const cfgUrl = document.getElementById("config-url");
+  if(cfgUrl) cfgUrl.value = SCRIPT_URL;
+  cargarDatosDesdeSheets().then(ok=>{
+    if(ok) mostrarSyncStatus("Conectado a Sheets");
+    else mostrarSyncStatus("Error al conectar", false);
+  });
 }
 
-// ══════════════════════════════════════════════
-// INICIO
-// ══════════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", ()=>{
-  const sesion = sessionStorage.getItem("cvn_user");
-  if(sesion){
-    try { usuarioActual=JSON.parse(sesion); entrarApp(); return; }
-    catch(e){ sessionStorage.removeItem("cvn_user"); }
-  }
-  document.getElementById("login-screen").style.display="flex";
-  // Esperar a que la librería de Google cargue y llamar onGoogleLibLoad
-  const esperar = setInterval(()=>{
-    if(typeof google!=="undefined" && google.accounts){
-      clearInterval(esperar);
-      onGoogleLibLoad();
-    }
-  }, 100);
+  entrarApp();
 });
 </script>
 </body>
