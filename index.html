@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planificador — Centro Vida Nueva</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
 :root {
@@ -192,13 +191,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .banner-text strong{display:block;margin-bottom:2px}
 
 /* LOGIN */
-.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:0}
-.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;width:360px;max-width:92vw;box-shadow:var(--shadow-md);text-align:center}
-.login-logo{width:56px;height:56px;border-radius:50%;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
-.login-title{font-size:20px;font-weight:600;letter-spacing:-0.02em;margin-bottom:4px}
-.login-sub{font-size:13px;color:var(--text-sec);margin-bottom:28px}
-.login-err{font-size:12px;color:var(--danger);margin-top:12px;min-height:16px}
-.login-footer{font-size:11px;color:var(--text-muted);margin-top:16px}
 
 @media(max-width:700px){
   .app{grid-template-columns:1fr}
@@ -440,22 +432,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 </div>
 
 <!-- PANTALLA DE LOGIN -->
-<div id="login-screen" class="login-screen">
-  <div class="login-card">
-    <img src="logo.png" alt="Vida Nueva" style="width:160px;margin:0 auto 20px;display:block;object-fit:contain">
-    <div class="login-title">Planificador semanal</div>
-    <div class="login-sub">Centro Vida Nueva</div>
-    <div id="google-btn-container" style="display:flex;justify-content:center;margin:24px 0 4px"></div>
-    <button onclick="loginConGoogle()" id="btn-google-fallback"
-      style="display:flex;align-items:center;justify-content:center;gap:10px;width:280px;margin:24px auto 4px;padding:10px 16px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;color:#3c4043">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18">
-      Continuar con Google
-    </button>
-    <div class="login-err" id="login-err"></div>
-    <div class="login-footer">Solo cuentas autorizadas</div>
-  </div>
-</div>
-
 <button class="hamburger" onclick="toggleSidebar()" aria-label="Menú">☰</button>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
