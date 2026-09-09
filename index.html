@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planificador — Centro Vida Nueva</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
 :root {
@@ -442,17 +441,21 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <!-- PANTALLA DE LOGIN -->
 <div id="login-screen" class="login-screen">
   <div class="login-card">
-    <img src="logo.png"
-      alt="Vida Nueva" style="width:160px;margin:0 auto 20px;display:block;object-fit:contain">
+    <img src="logo.png" alt="Vida Nueva" style="width:160px;margin:0 auto 20px;display:block;object-fit:contain">
     <div class="login-title">Planificador semanal</div>
-    <div class="login-sub">Centro Vida Nueva — Acceso restringido</div>
-    <div id="google-signin-btn" style="display:flex;justify-content:center;margin:8px 0"></div>
-    <button onclick="loginConGoogle()" style="display:flex;align-items:center;gap:10px;padding:10px 20px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;font-family:var(--font);color:#3c4043;width:280px;justify-content:center;margin:4px auto">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px">
-      Continuar con Google
-    </button>
+    <div class="login-sub">Centro Vida Nueva</div>
+    <div style="margin-top:20px;text-align:left">
+      <div class="field">
+        <label>Usuario</label>
+        <input type="text" id="login-usuario" placeholder="Tu nombre" style="width:100%" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" placeholder="Contraseña" style="width:100%" onkeydown="if(event.key==='Enter')loginSimple()">
+      </div>
+      <button onclick="loginSimple()" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px">Entrar</button>
+    </div>
     <div class="login-err" id="login-err"></div>
-    <div class="login-footer">Solo cuentas @centrovidanueva.org.es</div>
   </div>
 </div>
 
@@ -2092,59 +2095,43 @@ function navTo(page){
 }
 
 // ══════════════════════════════════════════════
-// GOOGLE LOGIN
+// LOGIN SIMPLE
 // ══════════════════════════════════════════════
-const DOMINIO_PERMITIDO = "centrovidanueva.org.es";
-const CLIENT_ID = "826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com";
-// Emails adicionales permitidos (cualquier cuenta Google)
-const EMAILS_PERMITIDOS = [
-  "berna.franco96@gmail.com",
-  "bernabe@centrovidanueva.org.es"
+const USUARIOS = [
+  {usuario:"bernabe", pass:"cvn2025", nombre:"Bernabé Franco"},
+  {usuario:"admin",   pass:"cvn2025", nombre:"Administrador"}
 ];
 let usuarioActual = null;
 
-function parseJwt(token){
-  try {
-    const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-    return JSON.parse(atob(base64));
-  } catch(e){ return null; }
-}
-
-function handleGoogleLogin(response){
-  const payload = parseJwt(response.credential);
-  if(!payload){ mostrarErrorLogin("Error al verificar el token."); return; }
-  const email = payload.email || "";
-  const dominio = email.split("@")[1] || "";
-  const permitido = dominio === DOMINIO_PERMITIDO || EMAILS_PERMITIDOS.includes(email);
-  if(!permitido){
-    mostrarErrorLogin(`Acceso denegado. Contacta con el administrador.`);
-    return;
-  }
-  usuarioActual = {
-    email: payload.email,
-    nombre: payload.name,
-    foto: payload.picture
-  };
+function loginSimple(){
+  const usuario = document.getElementById("login-usuario").value.trim().toLowerCase();
+  const pass = document.getElementById("login-pass").value;
+  const err = document.getElementById("login-err");
+  const u = USUARIOS.find(u=>u.usuario===usuario && u.pass===pass);
+  if(!u){ err.textContent="Usuario o contraseña incorrectos"; return; }
+  err.textContent="";
+  usuarioActual = {nombre:u.nombre, email:u.usuario};
   sessionStorage.setItem("cvn_user", JSON.stringify(usuarioActual));
   entrarApp();
 }
 
-function mostrarErrorLogin(msg){
-  document.getElementById("login-err").textContent = msg;
+function cerrarSesion(){
+  sessionStorage.removeItem("cvn_user");
+  usuarioActual = null;
+  document.getElementById("login-usuario").value="";
+  document.getElementById("login-pass").value="";
+  document.getElementById("login-err").textContent="";
+  document.getElementById("login-screen").style.display="flex";
 }
 
 function entrarApp(){
   try {
-    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("login-screen").style.display="none";
     localStorage.setItem("cvn_script_url", SCRIPT_URL);
     const footer = document.getElementById("conexion-estado");
     if(footer && usuarioActual){
-      footer.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <img src="${usuarioActual.foto}" style="width:22px;height:22px;border-radius:50%" onerror="this.style.display='none'">
-        <span style="font-size:11px;font-weight:500;color:var(--text-sec)">${usuarioActual.nombre}</span>
-      </div>
-      <div style="font-size:10px;color:var(--text-muted)">${usuarioActual.email}</div>
-      <button onclick="cerrarSesion()" style="margin-top:6px;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border-strong);background:transparent;cursor:pointer;color:var(--text-muted)">Cerrar sesión</button>`;
+      footer.innerHTML = `<div style="font-size:11px;font-weight:500;color:var(--text-sec);margin-bottom:2px">${usuarioActual.nombre}</div>
+      <button onclick="cerrarSesion()" style="margin-top:4px;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border-strong);background:transparent;cursor:pointer;color:var(--text-muted)">Cerrar sesión</button>`;
     }
     const cfgUrl = document.getElementById("config-url");
     if(cfgUrl) cfgUrl.value = SCRIPT_URL;
@@ -2152,27 +2139,16 @@ function entrarApp(){
       if(ok) mostrarSyncStatus("Conectado a Sheets");
       else mostrarSyncStatus("Error al conectar", false);
     });
-  } catch(err) {
-    // Si hay cualquier error, al menos mostrar la app
-    document.getElementById("login-screen").style.display = "none";
+  } catch(err){
+    document.getElementById("login-screen").style.display="none";
     console.error("entrarApp error:", err);
   }
-}
-
-function cerrarSesion(){
-  sessionStorage.removeItem("cvn_user");
-  usuarioActual = null;
-  document.getElementById("login-screen").style.display = "flex";
-  document.getElementById("login-err").textContent = "";
-  // Reiniciar Google Sign-In
-  initGoogleLogin();
 }
 
 // ══════════════════════════════════════════════
 // INICIO
 // ══════════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", ()=>{
-  // Comprobar sesión guardada
   const sesionGuardada = sessionStorage.getItem("cvn_user");
   if(sesionGuardada){
     try {
@@ -2181,49 +2157,8 @@ window.addEventListener("DOMContentLoaded", ()=>{
       return;
     } catch(e){ sessionStorage.removeItem("cvn_user"); }
   }
-  // Mostrar pantalla de login e inicializar Google Sign-In
-  document.getElementById("login-screen").style.display = "flex";
-  initGoogleLogin();
+  document.getElementById("login-screen").style.display="flex";
 });
-
-function initGoogleLogin(){
-  if(typeof google === "undefined"){
-    setTimeout(initGoogleLogin, 300);
-    return;
-  }
-  google.accounts.id.initialize({
-    client_id: "826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com",
-    callback: handleGoogleLogin,
-    auto_select: false,
-    cancel_on_tap_outside: false
-  });
-  // Intentar renderizar el botón oficial
-  try {
-    google.accounts.id.renderButton(
-      document.getElementById("google-signin-btn"),
-      {theme:"outline", size:"large", width:"280", text:"sign_in_with"}
-    );
-  } catch(e){ console.warn("renderButton failed:", e); }
-}
-
-function loginConGoogle(){
-  if(typeof google === "undefined"){
-    mostrarErrorLogin("Error: librería de Google no cargada. Recarga la página.");
-    return;
-  }
-  google.accounts.id.initialize({
-    client_id: "826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com",
-    callback: handleGoogleLogin,
-    auto_select: false
-  });
-  google.accounts.id.prompt((notification)=>{
-    if(notification.isNotDisplayed()||notification.isSkippedMoment()){
-      // Si el prompt no funciona, usar OAuth popup clásico
-      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com&redirect_uri=${encodeURIComponent(location.origin+location.pathname)}&response_type=token&scope=email+profile&prompt=select_account`;
-      window.location.href = url;
-    }
-  });
-}
 </script>
 </body>
 </html>
