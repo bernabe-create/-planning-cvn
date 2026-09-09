@@ -447,6 +447,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <div class="login-title">Planificador semanal</div>
     <div class="login-sub">Centro Vida Nueva — Acceso restringido</div>
     <div id="google-signin-btn" style="display:flex;justify-content:center;margin:8px 0"></div>
+    <button onclick="loginConGoogle()" style="display:flex;align-items:center;gap:10px;padding:10px 20px;border:1px solid #dadce0;border-radius:4px;background:#fff;cursor:pointer;font-size:14px;font-family:var(--font);color:#3c4043;width:280px;justify-content:center;margin:4px auto">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px">
+      Continuar con Google
+    </button>
     <div class="login-err" id="login-err"></div>
     <div class="login-footer">Solo cuentas @centrovidanueva.org.es</div>
   </div>
@@ -2184,8 +2188,27 @@ window.addEventListener("DOMContentLoaded", ()=>{
 
 function initGoogleLogin(){
   if(typeof google === "undefined"){
-    // Google script aún no cargó, reintentar
     setTimeout(initGoogleLogin, 300);
+    return;
+  }
+  google.accounts.id.initialize({
+    client_id: "826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com",
+    callback: handleGoogleLogin,
+    auto_select: false,
+    cancel_on_tap_outside: false
+  });
+  // Intentar renderizar el botón oficial
+  try {
+    google.accounts.id.renderButton(
+      document.getElementById("google-signin-btn"),
+      {theme:"outline", size:"large", width:"280", text:"sign_in_with"}
+    );
+  } catch(e){ console.warn("renderButton failed:", e); }
+}
+
+function loginConGoogle(){
+  if(typeof google === "undefined"){
+    mostrarErrorLogin("Error: librería de Google no cargada. Recarga la página.");
     return;
   }
   google.accounts.id.initialize({
@@ -2193,10 +2216,13 @@ function initGoogleLogin(){
     callback: handleGoogleLogin,
     auto_select: false
   });
-  google.accounts.id.renderButton(
-    document.getElementById("google-signin-btn"),
-    {theme:"outline", size:"large", width:"280", text:"sign_in_with"}
-  );
+  google.accounts.id.prompt((notification)=>{
+    if(notification.isNotDisplayed()||notification.isSkippedMoment()){
+      // Si el prompt no funciona, usar OAuth popup clásico
+      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com&redirect_uri=${encodeURIComponent(location.origin+location.pathname)}&response_type=token&scope=email+profile&prompt=select_account`;
+      window.location.href = url;
+    }
+  });
 }
 </script>
 </body>
