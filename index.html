@@ -498,22 +498,50 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <!-- PLANNING -->
     <div id="page-planning" class="page active">
       <div class="page-header">
-        <div class="page-title">Planning semanal</div>
-        <div class="page-sub">Asignación automática basada en capacidades, disponibilidad y reglas</div>
+        <div class="page-title">Planning diario</div>
+        <div class="page-sub">Genera, ajusta y guarda el planning de cada día</div>
       </div>
+
+      <!-- CONTROLES -->
       <div class="card">
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-          <div><label style="font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px">Semana del</label>
-          <input type="date" id="fecha-planning" style="width:auto"></div>
-          <button class="btn btn-primary" onclick="generarPlanning()">▶ Generar planning</button>
-          <button class="btn" onclick="generarPlanning()">↻ Regenerar</button>
-          <button class="btn" id="btn-guardar-planning" onclick="guardarPlanningSheets()" style="display:none;background:var(--success-light);color:#155724;border-color:#b8dfc8">💾 Guardar en Sheets</button>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px">Día</label>
+            <input type="date" id="fecha-planning" style="width:auto" onchange="cargarOGenerarDia()">
+          </div>
+          <button class="btn btn-primary" onclick="generarPlanning()">▶ Generar</button>
+          <button class="btn" id="btn-guardar-planning" onclick="guardarPlanningSheets()" style="display:none;background:var(--success-light);color:#155724;border-color:#b8dfc8">💾 Guardar</button>
           <span id="planning-save-msg" style="font-size:12px"></span>
         </div>
       </div>
-      <div class="dia-tabs" id="dia-tabs"></div>
+
+      <!-- HISTORIAL -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em">Historial</div>
+        <div id="historial-dias" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- TABLA EDITABLE -->
       <div id="planning-output">
-        <div class="empty">📅 Pulsa "Generar planning" para asignar personas a las tareas de la semana</div>
+        <div class="empty">📅 Selecciona un día y pulsa "Generar"</div>
+      </div>
+
+      <!-- MODAL CAMBIAR PERSONA -->
+      <div id="modal-cambiar-persona" style="display:none" class="modal-bg" onclick="if(event.target===this)cerrarModalCambio()">
+        <div class="modal" style="width:400px">
+          <div class="modal-header" style="padding-bottom:14px">
+            <div class="modal-title" id="modal-cambio-titulo">Cambiar persona</div>
+            <div id="modal-cambio-info" style="font-size:12px;color:var(--text-sec);margin-top:4px"></div>
+          </div>
+          <div class="modal-body">
+            <input type="text" id="modal-cambio-buscar" placeholder="Buscar persona..." oninput="renderListaCambio()" style="width:100%;margin-bottom:10px">
+            <div id="modal-cambio-lista" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn" onclick="cerrarModalCambio()">Cancelar</button>
+            <button class="btn btn-danger btn-sm" onclick="quitarPersonaSlot()">✕ Quitar persona</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -714,7 +742,9 @@ const TAREA_TAG = {"Formación Taller":"ft","Formación Externa":"fe","Cocina":"
 
 let SCRIPT_URL = localStorage.getItem("cvn_script_url") || "";
 let BD = {personas:[],tareas:[],franjas:[],capacidades:[],plantilla:[],reglas:[],disponibilidad:{},excepciones:[]};
-let planningResultado = {}, planningAyer = {}, diaActivo = "Lunes";
+let planningDia = {}; // {fID: [{slot, tarea, asignados, necesarios}]}
+let planningFechaActual = "";
+let modalCambioCtx = null; // {fID, slotIdx, personaIdx}
 let modalEditID = null, borrarID = null;
 let excFranjasActivas = new Set();
 
@@ -924,15 +954,17 @@ function inicializarUI(){
   document.getElementById("filtro-ct").innerHTML=`<option value="">Todas las tareas</option>`+BD.tareas.map(t=>`<option value="${t.TareaID}">${t.Icono} ${t.Nombre}</option>`).join("");
   document.getElementById("modal-cap-tarea").innerHTML=BD.tareas.map(t=>`<option value="${t.TareaID}">${t.Icono} ${t.Nombre}</option>`).join("");
   renderTablaPersonas(); renderStatsPersonas(); renderTablaCapacidades(); renderTablaExcepciones(); renderReglas(); renderFranjasToggles(); actualizarSelectsTareas();
-  document.getElementById("dia-tabs").innerHTML=DIAS.map(d=>`<button class="dia-tab${d===diaActivo?' active':''}" onclick="setDia('${d}')">${d}</button>`).join("");
-  // Fecha por defecto: lunes de la semana actual
-  const hoy = new Date(); const dia = hoy.getDay(); const lunes = new Date(hoy);
-  lunes.setDate(hoy.getDate()-(dia===0?6:dia-1));
-  document.getElementById("fecha-planning").value = lunes.toISOString().split("T")[0];
-  document.getElementById("exc-desde").value = lunes.toISOString().split("T")[0];
-  document.getElementById("exc-hasta").value = lunes.toISOString().split("T")[0];
-  // Cargar planning guardado de la semana actual
-  cargarPlanningGuardado(lunes);
+  // Fecha por defecto: mañana
+  const hoy = new Date();
+  const manana = new Date(hoy); manana.setDate(hoy.getDate()+1);
+  document.getElementById("fecha-planning").value = manana.toISOString().split("T")[0];
+  document.getElementById("exc-desde").value = hoy.toISOString().split("T")[0];
+  document.getElementById("exc-hasta").value = hoy.toISOString().split("T")[0];
+  // Cargar planning de hoy si existe
+  cargarPlanningFecha(hoy.toISOString().split("T")[0]).then(ok=>{
+    if(!ok) cargarPlanningFecha(manana.toISOString().split("T")[0]);
+  });
+  renderHistorialDias();
 }
 
 async function cargarPlanningGuardado(lunes){
@@ -1010,68 +1042,65 @@ function estaAusente(pID,fechaStr,fID){
   });
 }
 
+function fechaADia(fechaStr){
+  const d = new Date(fechaStr); d.setHours(12,0,0,0);
+  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  return dias[d.getDay()];
+}
+
+// ── GENERAR ──────────────────────────────────
 function generarPlanning(){
-  if(!BD.personas.length){ alert("Carga los datos primero desde 'Conectar Sheets' o usa los datos de demo."); return; }
-  planningResultado={}; planningAyer={};
-  const fechaBase=new Date(document.getElementById("fecha-planning").value);
-  DIAS.forEach((dia,idx)=>{
-    const fecha=new Date(fechaBase); fecha.setDate(fechaBase.getDate()+idx);
-    const fStr=fecha.toISOString().split("T")[0];
-    planningResultado[dia]=generarDia(dia,planningAyer,fStr);
-    planningAyer=construirHistorial(planningResultado[dia]);
-  });
-  renderDiaTabs(); renderPlanning();
+  if(!BD.personas.length){ alert("Carga los datos primero."); return; }
+  const fechaStr = document.getElementById("fecha-planning").value;
+  if(!fechaStr){ alert("Selecciona un día."); return; }
+  planningFechaActual = fechaStr;
+  const diaNombre = fechaADia(fechaStr);
+  planningDia = generarDia(diaNombre, {}, fechaStr);
+  renderPlanningTabla();
   document.getElementById("btn-guardar-planning").style.display="inline-flex";
   document.getElementById("planning-save-msg").textContent="";
 }
 
-async function guardarPlanningSheets(){
-  if(!SCRIPT_URL){ document.getElementById("planning-save-msg").innerHTML=`<span style="color:var(--danger)">❌ Sin conexión a Sheets</span>`; return; }
-  const msg=document.getElementById("planning-save-msg");
-  const btn=document.getElementById("btn-guardar-planning");
-  msg.innerHTML=`<span style="color:var(--text-muted)">Guardando...</span>`;
-  btn.disabled=true;
-  const fechaBase=new Date(document.getElementById("fecha-planning").value);
-  const filas=[];
-  DIAS.forEach((dia,idx)=>{
-    const fecha=new Date(fechaBase); fecha.setDate(fechaBase.getDate()+idx);
-    const fechaStr=fecha.toISOString().split("T")[0];
-    const data=planningResultado[dia]; if(!data) return;
-    Object.values(data).forEach(slots=>slots.forEach(s=>{
-      s.asignados.forEach(p=>{
-        filas.push({PlanningID:uid(),Fecha:fechaStr,Dia:dia,FranjaID:s.fID,TareaID:s.slot.TareaID,PersonaID:p.PersonaID,Estado:"ASIGNADO"});
-      });
-    }));
-  });
-  if(!filas.length){ msg.innerHTML=`<span style="color:var(--danger)">❌ Sin asignaciones</span>`; btn.disabled=false; return; }
-  const resultado=await syncSheets("guardarPlanning",{planning:filas,fecha:fechaBase.toISOString().split("T")[0]});
-  btn.disabled=false;
-  if(resultado?.ok){ msg.innerHTML=`<span style="color:var(--success)">✓ ${filas.length} asignaciones guardadas</span>`; setTimeout(()=>msg.innerHTML="",4000); }
-  else { msg.innerHTML=`<span style="color:var(--danger)">❌ Error: ${resultado?.error||"respuesta inesperada"}</span>`; }
+async function cargarOGenerarDia(){
+  const fechaStr = document.getElementById("fecha-planning").value;
+  if(!fechaStr||!SCRIPT_URL) return;
+  // Intentar cargar desde Sheets
+  const cargado = await cargarPlanningFecha(fechaStr);
+  if(cargado){
+    document.getElementById("planning-save-msg").innerHTML=`<span style="color:var(--text-muted);font-size:11px">Planning cargado desde historial</span>`;
+    setTimeout(()=>document.getElementById("planning-save-msg").innerHTML="",3000);
+  }
 }
 
-async function testSync(){
-  const msg=document.getElementById("config-msg");
-  if(!SCRIPT_URL){ msg.innerHTML=`<span style="color:var(--danger)">❌ Sin URL</span>`; return; }
-  msg.innerHTML=`<span style="color:var(--text-muted)">Probando...</span>`;
+async function cargarPlanningFecha(fechaStr){
   try {
-    const r1=await fetch(SCRIPT_URL+"?action=getDatos");
-    const d1=await r1.json();
-    if(d1.error){ msg.innerHTML=`<span style="color:var(--danger)">❌ ${d1.error}</span>`; return; }
-    const persona=d1.personas?.[0];
-    if(!persona){ msg.innerHTML=`<span style="color:var(--danger)">❌ Sin personas</span>`; return; }
-    const params=new URLSearchParams({action:"guardarPersona",data:JSON.stringify({persona})});
-    const r2=await fetch(`${SCRIPT_URL}?${params.toString()}`);
-    const d2=await r2.json();
-    if(d2.ok) msg.innerHTML=`<span style="color:var(--success)">✓ Escritura funciona correctamente</span>`;
-    else msg.innerHTML=`<span style="color:var(--danger)">❌ ${d2.error||"error inesperado"}</span>`;
-  } catch(e){ msg.innerHTML=`<span style="color:var(--danger)">❌ ${e.message}</span>`; }
-}
-
-function construirHistorial(r){
-  const h={};
-  Object.values(r).forEach(slots=>slots.forEach(s=>s.asignados.forEach(p=>{ if(!h[p.PersonaID]) h[p.PersonaID]=new Set(); h[p.PersonaID].add(s.slot.TareaID); })));
-  return h;
+    const r = await fetch(SCRIPT_URL + "?action=getPlanning");
+    const data = await r.json();
+    if(!data.planning?.length) return false;
+    const filas = data.planning.filter(f=>f.Fecha===fechaStr);
+    if(!filas.length) return false;
+    planningFechaActual = fechaStr;
+    planningDia = {};
+    filas.forEach(fila=>{
+      const fID=fila.FranjaID, tID=fila.TareaID, pID=fila.PersonaID;
+      if(!fID||!tID||!pID) return;
+      if(!planningDia[fID]) planningDia[fID]=[];
+      let slot = planningDia[fID].find(s=>s.slot?.TareaID===tID);
+      const persona=BD.personas.find(p=>p.PersonaID===pID);
+      const tarea=BD.tareas.find(t=>t.TareaID===tID);
+      const franja=BD.franjas.find(f=>f.FranjaID===fID);
+      if(!persona||!tarea||!franja) return;
+      if(!slot){
+        const plantSlot = BD.plantilla.find(p=>p.FranjaID===fID&&p.TareaID===tID);
+        slot={fID,franja,slot:{TareaID:tID,FranjaID:fID,PersonasNecesarias:plantSlot?.PersonasNecesarias||1},tarea,asignados:[],necesarios:plantSlot?.PersonasNecesarias||1};
+        planningDia[fID].push(slot);
+      }
+      slot.asignados.push(persona);
+    });
+    renderPlanningTabla();
+    document.getElementById("btn-guardar-planning").style.display="inline-flex";
+    return true;
+  } catch(e){ return false; }
 }
 
 function generarDia(dia,histAyer,fechaStr){
@@ -1136,40 +1165,204 @@ function generarDia(dia,histAyer,fechaStr){
   return res;
 }
 
-function renderDiaTabs(){ document.getElementById("dia-tabs").innerHTML=DIAS.map(d=>`<button class="dia-tab${d===diaActivo?' active':''}" onclick="setDia('${d}')">${d}</button>`).join(""); }
-function setDia(d){ diaActivo=d; document.querySelectorAll(".dia-tab").forEach(b=>b.classList.toggle("active",b.textContent===d)); renderPlanning(); }
+// ── RENDER TABLA EDITABLE ────────────────────
+function renderPlanningTabla(){
+  const out = document.getElementById("planning-output");
+  if(!planningDia||!Object.keys(planningDia).length){
+    out.innerHTML=`<div class="empty">🚫 Sin plantilla para este día. Comprueba la configuración de tareas.</div>`; return;
+  }
+  const franjas = BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden);
+  const tareas = BD.tareas;
+  // Recoger todas las tareas que aparecen en el planning de este día
+  const tareasEnDia = [...new Set(Object.values(planningDia).flatMap(slots=>slots.map(s=>s.slot.TareaID)))];
+  const tareasVis = tareas.filter(t=>tareasEnDia.includes(t.TareaID));
 
-function renderPlanning(){
-  const out=document.getElementById("planning-output");
-  const data=planningResultado[diaActivo];
-  if(!data||!Object.keys(data).length){ out.innerHTML=`<div class="empty">🚫 Sin plantilla configurada para ${diaActivo}</div>`; return; }
-  let tA=0,tN=0,sC=0;
-  Object.values(data).forEach(slots=>slots.forEach(s=>{ tA+=s.asignados.length; tN+=s.necesarios; sC+=Math.max(0,s.necesarios-s.asignados.length); }));
-  let html=sC>0
-    ?`<div class="alert alert-warn">⚠️ ${sC} plaza${sC!==1?'s':''} sin cubrir. Revisa capacidades o disponibilidad.</div>`
-    :`<div class="alert alert-ok">✓ Todas las plazas cubiertas para ${diaActivo}</div>`;
-  html+=`<div class="stat-grid" style="margin-bottom:14px"><div class="stat"><div class="stat-n">${tA}</div><div class="stat-label">Personas asignadas</div></div><div class="stat"><div class="stat-n">${tN}</div><div class="stat-label">Plazas totales</div></div><div class="stat"><div class="stat-n" style="color:${sC>0?'var(--danger)':'var(--success)'}">${sC}</div><div class="stat-label">Sin cubrir</div></div></div>`;
-  BD.franjas.slice().sort((a,b)=>a.Orden-b.Orden).forEach(franja=>{
-    const slots=data[franja.FranjaID]; if(!slots?.length) return;
-    html+=`<div class="franja-block"><div class="franja-header"><span class="franja-id">${franja.FranjaID}</span><span class="franja-hora">${franja.HoraInicio} – ${franja.HoraFin}</span></div><div class="tareas-grid">`;
-    slots.forEach(s=>{
-      const ok=s.asignados.length>=s.necesarios;
-      const esF=TAREAS_FORMACION.includes(s.slot.TareaID);
-      html+=`<div class="tarea-card${esF?' formacion':''}"><div class="tarea-card-title">${s.tarea?.Icono||''} ${s.tarea?.Nombre||''}</div><div class="tarea-card-count">${s.asignados.length}/${s.necesarios}${ok?' ✓':''}</div><div class="personas-chips">`;
-      if(!s.asignados.length){ html+=`<span style="color:var(--text-muted);font-size:11px;font-style:italic">Sin candidatos</span>`; }
-      else { s.asignados.forEach(p=>{ const gc=GRUPO_CLASS[p.Grupo]||"chicos"; html+=`<span class="chip badge-${gc}">${p.Nombre.split(" ")[0]}</span>`; }); }
-      if(s.asignados.length<s.necesarios&&s.asignados.length>0) html+=`<span class="chip" style="background:var(--danger-light);color:var(--danger)">−${s.necesarios-s.asignados.length}</span>`;
-      html+=`</div></div>`;
-    });
-    html+=`</div></div>`;
+  let totalA=0, totalN=0, sinCubrir=0;
+  Object.values(planningDia).forEach(slots=>slots.forEach(s=>{
+    totalA+=s.asignados.length; totalN+=s.necesarios;
+    sinCubrir+=Math.max(0,s.necesarios-s.asignados.length);
+  }));
+
+  let html = sinCubrir>0
+    ?`<div class="alert alert-warn">⚠️ ${sinCubrir} plaza${sinCubrir!==1?'s':''} sin cubrir</div>`
+    :`<div class="alert alert-ok">✓ Todas las plazas cubiertas — ${totalA} personas asignadas</div>`;
+
+  // TABLA: filas=franjas, columnas=tareas
+  html+=`<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:13px">
+  <thead><tr>
+    <th style="padding:8px 12px;text-align:left;background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--text-muted);font-weight:600;white-space:nowrap;min-width:110px">Franja</th>`;
+  tareasVis.forEach(t=>{
+    html+=`<th style="padding:8px 10px;text-align:left;background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--text-muted);font-weight:600;min-width:140px">${t.Icono||''} ${t.Nombre}</th>`;
   });
+  html+=`</tr></thead><tbody>`;
+
+  franjas.forEach(franja=>{
+    const slots = planningDia[franja.FranjaID];
+    if(!slots?.length) return;
+    html+=`<tr><td style="padding:8px 12px;border:1px solid var(--border);background:var(--surface2);white-space:nowrap;vertical-align:top">
+      <div style="font-size:12px;font-weight:700;color:var(--text)">${franja.HoraInicio}</div>
+      <div style="font-size:10px;color:var(--text-muted)">${franja.HoraFin}</div>
+    </td>`;
+    tareasVis.forEach(t=>{
+      const slot = slots.find(s=>s.slot.TareaID===t.TareaID);
+      if(!slot){
+        html+=`<td style="padding:8px 10px;border:1px solid var(--border);background:var(--surface);vertical-align:top;color:var(--text-muted);font-size:11px;font-style:italic">—</td>`;
+        return;
+      }
+      const fID=franja.FranjaID, tID=t.TareaID;
+      const slotIdx=slots.indexOf(slot);
+      const ok=slot.asignados.length>=slot.necesarios;
+      html+=`<td style="padding:8px 10px;border:1px solid var(--border);background:var(--surface);vertical-align:top">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:5px">${slot.asignados.length}/${slot.necesarios} ${ok?'✓':'⚠'}</div>
+        <div style="display:flex;flex-direction:column;gap:3px">`;
+      slot.asignados.forEach((p,pi)=>{
+        const gc=GRUPO_CLASS[p.Grupo]||"chicos";
+        html+=`<div style="display:flex;align-items:center;gap:4px">
+          <span class="chip badge-${gc}" style="flex:1;font-size:11px">${p.Nombre.split(" ")[0]}</span>
+          <button onclick="abrirCambioPersona('${fID}','${tID}',${slotIdx},${pi})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border-strong);background:var(--surface2);cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;padding:0" title="Cambiar">✏</button>
+        </div>`;
+      });
+      if(slot.asignados.length<slot.necesarios){
+        html+=`<button onclick="abrirCambioPersona('${fID}','${tID}',${slotIdx},-1)" style="margin-top:3px;width:100%;padding:3px;border-radius:var(--radius);border:1px dashed var(--border-strong);background:transparent;cursor:pointer;font-size:11px;color:var(--accent)">+ Añadir</button>`;
+      }
+      html+=`</div></td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
   out.innerHTML=html;
+  renderHistorialDias();
+}
+
+// ── HISTORIAL ────────────────────────────────
+async function renderHistorialDias(){
+  if(!SCRIPT_URL) return;
+  try {
+    const r = await fetch(SCRIPT_URL + "?action=getPlanning");
+    const data = await r.json();
+    if(!data.planning?.length){ document.getElementById("historial-dias").innerHTML=""; return; }
+    const fechas=[...new Set(data.planning.map(f=>f.Fecha))].sort().reverse().slice(0,14);
+    const hoy = new Date().toISOString().split("T")[0];
+    document.getElementById("historial-dias").innerHTML = fechas.map(f=>{
+      const activo = f===planningFechaActual;
+      const esHoy = f===hoy;
+      const d=new Date(f); d.setHours(12);
+      const label=d.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
+      return `<button onclick="cargarFechaHistorial('${f}')"
+        style="padding:4px 10px;border-radius:var(--radius);border:1px solid ${activo?'var(--accent)':'var(--border-strong)'};
+        background:${activo?'var(--accent)':esHoy?'var(--accent-light)':'var(--surface)'};
+        color:${activo?'#fff':'var(--text-sec)'};cursor:pointer;font-size:11px;font-family:var(--font);white-space:nowrap">${label}</button>`;
+    }).join("");
+  } catch(e){}
+}
+
+async function cargarFechaHistorial(fechaStr){
+  document.getElementById("fecha-planning").value = fechaStr;
+  await cargarPlanningFecha(fechaStr);
+}
+
+// ── EDICIÓN MANUAL ───────────────────────────
+function abrirCambioPersona(fID, tID, slotIdx, personaIdx){
+  const slot = planningDia[fID]?.[slotIdx];
+  if(!slot) return;
+  modalCambioCtx = {fID, tID, slotIdx, personaIdx};
+  const tarea = BD.tareas.find(t=>t.TareaID===tID);
+  const franja = BD.franjas.find(f=>f.FranjaID===fID);
+  document.getElementById("modal-cambio-titulo").textContent = personaIdx>=0 ? "Cambiar persona" : "Añadir persona";
+  document.getElementById("modal-cambio-info").textContent = `${franja?.HoraInicio}–${franja?.HoraFin} · ${tarea?.Icono||''} ${tarea?.Nombre||''}`;
+  document.getElementById("modal-cambio-buscar").value="";
+  document.getElementById("modal-cambiar-persona").style.display="flex";
+  renderListaCambio();
+}
+
+function cerrarModalCambio(){
+  document.getElementById("modal-cambiar-persona").style.display="none";
+  modalCambioCtx=null;
+}
+
+function renderListaCambio(){
+  if(!modalCambioCtx) return;
+  const {fID, tID, slotIdx, personaIdx} = modalCambioCtx;
+  const slot = planningDia[fID]?.[slotIdx];
+  const q = document.getElementById("modal-cambio-buscar").value.toLowerCase();
+  // Mostrar personas con capacidad para esta tarea, filtradas por búsqueda
+  const candidatos = BD.personas.filter(p=>{
+    if(!p.Activo) return false;
+    if(!tieneCapacidad(p.PersonaID, tID)) return false;
+    if(q && !p.Nombre.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>a.Nombre.localeCompare(b.Nombre));
+
+  const asignadosIDs = new Set(slot?.asignados.map(p=>p.PersonaID)||[]);
+
+  document.getElementById("modal-cambio-lista").innerHTML = candidatos.map(p=>{
+    const gc=GRUPO_CLASS[p.Grupo]||"chicos";
+    const yaAsignado = asignadosIDs.has(p.PersonaID);
+    return `<div onclick="${yaAsignado?'':` seleccionarPersonaCambio('${p.PersonaID}')`}"
+      style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);
+      cursor:${yaAsignado?'default':'pointer'};background:${yaAsignado?'var(--surface2)':'var(--surface)'};opacity:${yaAsignado?0.5:1}">
+      <span class="badge badge-${gc}" style="font-size:11px">${p.Grupo}</span>
+      <span style="flex:1;font-size:13px;font-weight:500">${p.Nombre}</span>
+      ${yaAsignado?'<span style="font-size:11px;color:var(--text-muted)">Ya asignado</span>':''}
+    </div>`;
+  }).join("") || `<div style="color:var(--text-muted);text-align:center;padding:20px;font-size:13px">Sin candidatos con capacidad para esta tarea</div>`;
+}
+
+function seleccionarPersonaCambio(pID){
+  if(!modalCambioCtx) return;
+  const {fID, slotIdx, personaIdx} = modalCambioCtx;
+  const slot = planningDia[fID]?.[slotIdx];
+  if(!slot) return;
+  const persona = BD.personas.find(p=>p.PersonaID===pID);
+  if(!persona) return;
+  if(personaIdx>=0){
+    slot.asignados[personaIdx] = persona; // cambiar
+  } else {
+    slot.asignados.push(persona); // añadir
+  }
+  cerrarModalCambio();
+  renderPlanningTabla();
+}
+
+function quitarPersonaSlot(){
+  if(!modalCambioCtx) return;
+  const {fID, slotIdx, personaIdx} = modalCambioCtx;
+  const slot = planningDia[fID]?.[slotIdx];
+  if(!slot||personaIdx<0) return;
+  slot.asignados.splice(personaIdx,1);
+  cerrarModalCambio();
+  renderPlanningTabla();
+}
+
+// ── GUARDAR ──────────────────────────────────
+async function guardarPlanningSheets(){
+  if(!SCRIPT_URL){ document.getElementById("planning-save-msg").innerHTML=`<span style="color:var(--danger)">❌ Sin conexión</span>`; return; }
+  const msg=document.getElementById("planning-save-msg");
+  const btn=document.getElementById("btn-guardar-planning");
+  msg.innerHTML=`<span style="color:var(--text-muted)">Guardando...</span>`;
+  btn.disabled=true;
+  const fechaStr=planningFechaActual;
+  const diaNombre=fechaADia(fechaStr);
+  const filas=[];
+  Object.values(planningDia).forEach(slots=>slots.forEach(s=>{
+    s.asignados.forEach(p=>{
+      filas.push({PlanningID:uid(),Fecha:fechaStr,Dia:diaNombre,FranjaID:s.fID,TareaID:s.slot.TareaID,PersonaID:p.PersonaID,Estado:"ASIGNADO"});
+    });
+  }));
+  if(!filas.length){ msg.innerHTML=`<span style="color:var(--danger)">❌ Sin asignaciones</span>`; btn.disabled=false; return; }
+  const resultado=await syncSheets("guardarPlanning",{planning:filas,fecha:fechaStr});
+  btn.disabled=false;
+  if(resultado?.ok){
+    msg.innerHTML=`<span style="color:var(--success)">✓ ${filas.length} asignaciones guardadas</span>`;
+    setTimeout(()=>msg.innerHTML="",4000);
+    renderHistorialDias();
+  } else {
+    msg.innerHTML=`<span style="color:var(--danger)">❌ ${resultado?.error||"error inesperado"}</span>`;
+  }
 }
 
 // ══════════════════════════════════════════════
-// PERSONAS
-// ══════════════════════════════════════════════
-function renderStatsPersonas(){
+// PERSONASderStatsPersonas(){
   const grupos={}; BD.personas.filter(p=>p.Activo).forEach(p=>{ grupos[p.Grupo]=(grupos[p.Grupo]||0)+1; });
   const total=BD.personas.filter(p=>p.Activo).length, inact=BD.personas.filter(p=>!p.Activo).length;
   document.getElementById("stats-personas").innerHTML=
