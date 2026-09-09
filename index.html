@@ -507,6 +507,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
           <input type="date" id="fecha-planning" style="width:auto"></div>
           <button class="btn btn-primary" onclick="generarPlanning()">▶ Generar planning</button>
           <button class="btn" onclick="generarPlanning()">↻ Regenerar</button>
+          <button class="btn" id="btn-guardar-planning" onclick="guardarPlanningSheets()" style="display:none;background:var(--success-light);color:#155724;border-color:#b8dfc8">💾 Guardar en Sheets</button>
+          <span id="planning-save-msg" style="font-size:12px"></span>
         </div>
       </div>
       <div class="dia-tabs" id="dia-tabs"></div>
@@ -675,6 +677,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn btn-primary" onclick="guardarConfig()">🔌 Conectar y cargar datos</button>
           <button class="btn" onclick="usarDatosDemo()">🧪 Usar datos de demo</button>
+          <button class="btn" onclick="testSync()" style="background:var(--warn-light);color:var(--warn);border-color:#fde68a">🔍 Test escritura</button>
           <span id="config-msg" style="font-size:12px"></span>
         </div>
       </div>
@@ -960,6 +963,51 @@ function generarPlanning(){
     planningAyer=construirHistorial(planningResultado[dia]);
   });
   renderDiaTabs(); renderPlanning();
+  document.getElementById("btn-guardar-planning").style.display="inline-flex";
+  document.getElementById("planning-save-msg").textContent="";
+}
+
+async function guardarPlanningSheets(){
+  if(!SCRIPT_URL){ document.getElementById("planning-save-msg").innerHTML=`<span style="color:var(--danger)">❌ Sin conexión a Sheets</span>`; return; }
+  const msg=document.getElementById("planning-save-msg");
+  const btn=document.getElementById("btn-guardar-planning");
+  msg.innerHTML=`<span style="color:var(--text-muted)">Guardando...</span>`;
+  btn.disabled=true;
+  const fechaBase=new Date(document.getElementById("fecha-planning").value);
+  const filas=[];
+  DIAS.forEach((dia,idx)=>{
+    const fecha=new Date(fechaBase); fecha.setDate(fechaBase.getDate()+idx);
+    const fechaStr=fecha.toISOString().split("T")[0];
+    const data=planningResultado[dia]; if(!data) return;
+    Object.values(data).forEach(slots=>slots.forEach(s=>{
+      s.asignados.forEach(p=>{
+        filas.push({PlanningID:uid(),Fecha:fechaStr,Dia:dia,FranjaID:s.fID,TareaID:s.slot.TareaID,PersonaID:p.PersonaID,Estado:"ASIGNADO"});
+      });
+    }));
+  });
+  if(!filas.length){ msg.innerHTML=`<span style="color:var(--danger)">❌ Sin asignaciones</span>`; btn.disabled=false; return; }
+  const resultado=await syncSheets("guardarPlanning",{planning:filas,fecha:fechaBase.toISOString().split("T")[0]});
+  btn.disabled=false;
+  if(resultado?.ok){ msg.innerHTML=`<span style="color:var(--success)">✓ ${filas.length} asignaciones guardadas</span>`; setTimeout(()=>msg.innerHTML="",4000); }
+  else { msg.innerHTML=`<span style="color:var(--danger)">❌ Error: ${resultado?.error||"respuesta inesperada"}</span>`; }
+}
+
+async function testSync(){
+  const msg=document.getElementById("config-msg");
+  if(!SCRIPT_URL){ msg.innerHTML=`<span style="color:var(--danger)">❌ Sin URL</span>`; return; }
+  msg.innerHTML=`<span style="color:var(--text-muted)">Probando...</span>`;
+  try {
+    const r1=await fetch(SCRIPT_URL+"?action=getDatos");
+    const d1=await r1.json();
+    if(d1.error){ msg.innerHTML=`<span style="color:var(--danger)">❌ ${d1.error}</span>`; return; }
+    const persona=d1.personas?.[0];
+    if(!persona){ msg.innerHTML=`<span style="color:var(--danger)">❌ Sin personas</span>`; return; }
+    const params=new URLSearchParams({action:"guardarPersona",data:JSON.stringify({persona})});
+    const r2=await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const d2=await r2.json();
+    if(d2.ok) msg.innerHTML=`<span style="color:var(--success)">✓ Escritura funciona correctamente</span>`;
+    else msg.innerHTML=`<span style="color:var(--danger)">❌ ${d2.error||"error inesperado"}</span>`;
+  } catch(e){ msg.innerHTML=`<span style="color:var(--danger)">❌ ${e.message}</span>`; }
 }
 
 function construirHistorial(r){
@@ -2040,16 +2088,13 @@ function entrarApp(){
     <div style="font-size:10px;color:var(--text-muted)">${usuarioActual.email}</div>
     <button onclick="cerrarSesion()" style="margin-top:6px;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border-strong);background:transparent;cursor:pointer;color:var(--text-muted)">Cerrar sesión</button>`;
   }
-  // Cargar datos
-  if(SCRIPT_URL){
-    document.getElementById("config-url").value=SCRIPT_URL;
-    cargarDatosDesdeSheets().then(ok=>{
-      if(ok) mostrarSyncStatus("Conectado a Sheets");
-      else usarDatosDemo();
-    });
-  } else {
-    usarDatosDemo();
-  }
+  // Cargar datos — conectar automáticamente con URL fija
+  localStorage.setItem("cvn_script_url", SCRIPT_URL);
+  document.getElementById("config-url").value = SCRIPT_URL;
+  cargarDatosDesdeSheets().then(ok=>{
+    if(ok) mostrarSyncStatus("Conectado a Sheets");
+    else { mostrarSyncStatus("Error al conectar", false); usarDatosDemo(); }
+  });
 }
 
 function cerrarSesion(){
