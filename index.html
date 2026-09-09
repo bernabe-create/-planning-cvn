@@ -446,20 +446,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       alt="Vida Nueva" style="width:160px;margin:0 auto 20px;display:block;object-fit:contain">
     <div class="login-title">Planificador semanal</div>
     <div class="login-sub">Centro Vida Nueva — Acceso restringido</div>
-    <div id="g_id_onload"
-      data-client_id="826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com"
-      data-callback="handleGoogleLogin"
-      data-auto_prompt="false">
-    </div>
-    <div class="g_id_signin"
-      data-type="standard"
-      data-size="large"
-      data-theme="outline"
-      data-text="sign_in_with"
-      data-shape="rectangular"
-      data-logo_alignment="left"
-      data-width="280">
-    </div>
+    <div id="google-signin-btn" style="display:flex;justify-content:center;margin:8px 0"></div>
     <div class="login-err" id="login-err"></div>
     <div class="login-footer">Solo cuentas @centrovidanueva.org.es</div>
   </div>
@@ -2174,14 +2161,7 @@ function cerrarSesion(){
   document.getElementById("login-screen").style.display = "flex";
   document.getElementById("login-err").textContent = "";
   // Reiniciar Google Sign-In
-  google.accounts.id.initialize({
-    client_id: CLIENT_ID,
-    callback: handleGoogleLogin
-  });
-  google.accounts.id.renderButton(
-    document.querySelector(".g_id_signin"),
-    {theme:"outline", size:"large", width:"280"}
-  );
+  initGoogleLogin();
 }
 
 // ══════════════════════════════════════════════
@@ -2197,9 +2177,27 @@ window.addEventListener("DOMContentLoaded", ()=>{
       return;
     } catch(e){ sessionStorage.removeItem("cvn_user"); }
   }
-  // Mostrar pantalla de login (Google la renderiza automáticamente)
+  // Mostrar pantalla de login e inicializar Google Sign-In
   document.getElementById("login-screen").style.display = "flex";
+  initGoogleLogin();
 });
+
+function initGoogleLogin(){
+  if(typeof google === "undefined"){
+    // Google script aún no cargó, reintentar
+    setTimeout(initGoogleLogin, 300);
+    return;
+  }
+  google.accounts.id.initialize({
+    client_id: "826681948111-cgfiki26lm0k0q3s5u3f4us90vm1mm2g.apps.googleusercontent.com",
+    callback: handleGoogleLogin,
+    auto_select: false
+  });
+  google.accounts.id.renderButton(
+    document.getElementById("google-signin-btn"),
+    {theme:"outline", size:"large", width:"280", text:"sign_in_with"}
+  );
+}
 </script>
 </body>
 </html>
