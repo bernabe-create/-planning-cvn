@@ -931,6 +931,64 @@ function inicializarUI(){
   document.getElementById("fecha-planning").value = lunes.toISOString().split("T")[0];
   document.getElementById("exc-desde").value = lunes.toISOString().split("T")[0];
   document.getElementById("exc-hasta").value = lunes.toISOString().split("T")[0];
+  // Cargar planning guardado de la semana actual
+  cargarPlanningGuardado(lunes);
+}
+
+async function cargarPlanningGuardado(lunes){
+  if(!SCRIPT_URL) return;
+  try {
+    const r = await fetch(SCRIPT_URL + "?action=getPlanning");
+    const data = await r.json();
+    if(!data.planning?.length) return;
+
+    const lunesStr = lunes.toISOString().split("T")[0];
+    const viernesDate = new Date(lunes); viernesDate.setDate(lunes.getDate()+4);
+    const viernesStr = viernesDate.toISOString().split("T")[0];
+
+    // Filtrar filas de esta semana
+    const filasSemana = data.planning.filter(f=>{
+      const fecha = f.Fecha || "";
+      return fecha >= lunesStr && fecha <= viernesStr;
+    });
+    if(!filasSemana.length) return;
+
+    // Reconstruir planningResultado desde las filas guardadas
+    planningResultado = {};
+    DIAS.forEach(d=>{ planningResultado[d] = {}; });
+
+    filasSemana.forEach(fila=>{
+      const dia = fila.Dia;
+      const fID = fila.FranjaID;
+      const tID = fila.TareaID;
+      const pID = fila.PersonaID;
+      if(!dia||!fID||!tID||!pID) return;
+      if(!planningResultado[dia]) planningResultado[dia]={};
+      if(!planningResultado[dia][fID]) planningResultado[dia][fID]=[];
+
+      // Buscar si ya hay un slot para esta tarea en esta franja
+      let slot = planningResultado[dia][fID].find(s=>s.slot?.TareaID===tID);
+      const persona = BD.personas.find(p=>p.PersonaID===pID);
+      const tarea = BD.tareas.find(t=>t.TareaID===tID);
+      const franja = BD.franjas.find(f=>f.FranjaID===fID);
+      if(!persona||!tarea||!franja) return;
+
+      if(!slot){
+        slot = {fID, franja, slot:{TareaID:tID, FranjaID:fID, PersonasNecesarias:0}, tarea, asignados:[], necesarios:0};
+        planningResultado[dia][fID].push(slot);
+      }
+      slot.asignados.push(persona);
+      slot.necesarios = slot.asignados.length;
+      slot.slot.PersonasNecesarias = slot.asignados.length;
+    });
+
+    // Mostrar botón guardar y renderizar
+    document.getElementById("btn-guardar-planning").style.display="inline-flex";
+    document.getElementById("planning-save-msg").innerHTML=`<span style="color:var(--text-muted);font-size:11px">Planning cargado desde Sheets</span>`;
+    setTimeout(()=>{ document.getElementById("planning-save-msg").innerHTML=""; }, 3000);
+    renderDiaTabs(); renderPlanning();
+
+  } catch(e){ console.warn("Error cargando planning:", e.message); }
 }
 
 // ══════════════════════════════════════════════
